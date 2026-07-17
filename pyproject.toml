@@ -1,0 +1,79 @@
+[project]
+name = "researchos"
+version = "0.1.0"
+description = "An Autonomous AI Research Operating System — a multi-agent collaborator for the full research workflow."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "LouissMa" }]
+keywords = ["ai", "agents", "research", "llm", "rag", "knowledge-graph", "langgraph"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "httpx>=0.27",
+    "feedparser>=6.0",
+    "sqlalchemy>=2.0",
+    "qdrant-client>=1.12",
+    "numpy>=1.26",
+    "typer>=0.12",
+    "rich>=13.9",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Heavy / optional capabilities kept out of the default install so the
+# foundation runs offline with zero external services.
+pdf = ["pymupdf>=1.24"]
+llm = ["openai>=1.54"]
+embeddings = ["sentence-transformers>=3.0"]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+    "mypy>=1.13",
+]
+
+[project.scripts]
+researchos = "researchos.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/LouissMa/researchos"
+Repository = "https://github.com/LouissMa/researchos"
+Documentation = "https://github.com/LouissMa/researchos/blob/main/ARCHITECTURE.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/researchos"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "network: tests that hit external APIs (deselect with -m 'not network')",
+]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["researchos"]
+ignore_missing_imports = true

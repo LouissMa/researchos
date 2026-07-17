@@ -1,0 +1,69 @@
+"""Central configuration.
+
+Everything has an offline-safe default: the default profile runs with zero external
+services or API keys. Override via environment variables (prefix ``RESEARCHOS_``) or a
+``.env`` file. See ``.env.example``.
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="RESEARCHOS_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # ---- General ----
+    data_dir: Path = Path("./data")
+    log_level: str = "INFO"
+
+    # ---- Embeddings ----
+    embedding_provider: str = "local"  # local | openai | bge
+    embedding_dim: int = 384
+
+    # ---- LLM ----
+    llm_provider: str = "null"  # null | openai
+    llm_model: str = "gpt-4o-mini"
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_temperature: float = 0.2
+    # Read from the conventional (unprefixed) env var.
+    openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
+
+    # ---- Vector store ----
+    qdrant_mode: str = "embedded"  # embedded | server
+    qdrant_url: str = "http://localhost:6333"
+
+    # ---- Ingestion ----
+    fetch_pdf: bool = False
+
+    # ---- Derived paths ----
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "researchos.sqlite"
+
+    @property
+    def artifacts_dir(self) -> Path:
+        return self.data_dir / "artifacts"
+
+    @property
+    def qdrant_path(self) -> Path:
+        return self.data_dir / "qdrant"
+
+    def ensure_dirs(self) -> None:
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Process-wide singleton settings."""
+    return Settings()

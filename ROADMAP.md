@@ -1,0 +1,69 @@
+# ResearchOS — Roadmap
+
+Depth-first, not breadth-first. A complete, trustworthy literature system is worth more — to users
+and as infrastructure — than a shallow end-to-end pipeline. Each phase ships something that
+**runs** and is **observable**.
+
+Legend: ✅ done · 🟡 in progress · ⬜ planned
+
+---
+
+## Phase 0 — Skeleton & observability
+> *Deliverable: an empty run streams a trace end-to-end. Observability first.*
+
+- ✅ Repo, packaging (`uv`/hatchling), Apache-2.0
+- ✅ Core interfaces: `Agent`, `Orchestrator`, `MemoryStore`, `Tool`, `EmbeddingProvider`, `LLM`
+- ✅ `ResearchState` + `Task` + typed models
+- ✅ Append-only **event log** (SQLite) + event emitter
+- ✅ FastAPI shell + CLI
+- ⬜ OpenTelemetry spans + LLM tracing (LangFuse/Phoenix)
+
+## Phase 1 — MVP: literature discovery (runnable foundation)
+> *Deliverable: "Study long-term memory for LLM agents" → ranked, deduplicated, clustered
+> landscape with a defensible reading order, every recommendation traceable to why.*
+
+- ✅ arXiv tool (real API) behind the `Tool` interface
+- ✅ Ingestion: metadata + chunking (+ optional PDF full text via PyMuPDF)
+- ✅ Embedding providers: local deterministic (offline) · OpenAI-compatible
+- ✅ Embedded Qdrant vector store + semantic retrieval
+- ✅ Planner + Literature + Knowledge agents over `ResearchState`
+- ✅ Research cards (heuristic; LLM-authored when a key is configured)
+- ✅ Landscape report artifact + reasoning-trace inspection
+- ⬜ Semantic Scholar + OpenAlex + GitHub tools
+- ⬜ Cross-source dedup + citation-graph coverage check
+- ⬜ Minimal React project view + trace timeline
+
+## Phase 2 — Memory & Critic
+> *Deliverable: the memory system becomes real infrastructure, and quality is gated.*
+
+- ⬜ Four-tier memory with **reflection / consolidation / forgetting**
+- ⬜ `RetrievalStrategy` variants (vector vs hybrid vs graph) — swappable & benchmarked
+- ⬜ **Critic** agent + reflection loop with budget
+- ⬜ `benchmarks/` frozen scenarios + eval CI (recall@k, grounding)
+
+## Phase 3 — Ideas & Review
+- ⬜ **Idea** agent: gap analysis over the knowledge graph → research proposals
+- ⬜ **Reviewer** capability (strengths/weaknesses/novelty/score) benchmarked vs OpenReview
+- ⬜ Knowledge-graph visualization
+- ⬜ Introduce **Neo4j** for graph analytics (centrality, community detection)
+
+## Phase 4 — Experiments (highest risk, deliberately last)
+- ⬜ **Experiment** agent: plan → code template → sandboxed run → analyze
+- ⬜ Sandboxed `python-exec` tool (network-restricted, resource-capped container)
+- ⬜ Experiment tracking + baseline comparison + reproduction workflow
+- ⬜ Ships first as *assisted* reproduction (human runs), then autonomous
+
+## Phase 5 — Writing & polish
+- ⬜ **Writing** agent: LaTeX drafts, related work from the KG, consistency checks
+- ⬜ Full `examples/`, tutorials, API docs
+- ⬜ 1.0 launch
+
+---
+
+## Future extensions
+- VS Code / Zotero / Overleaf integrations
+- Multi-user collaborative projects + shared team memory
+- Self-improving retrieval (learns per-user strategy from feedback)
+- "Research replication leaderboard" — community benchmark of reproduced papers
+- Local-first / open-weight model support for privacy-sensitive labs
+- Temporal-backed durable orchestration for month-long research campaigns

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+
+# uv
+uv.lock
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ResearchOS runtime data (local databases, vector store, artifacts)
+data/
+*.sqlite
+*.sqlite3
+*.db
+qdrant_storage/
+artifacts/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
