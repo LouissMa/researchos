@@ -6,6 +6,7 @@
 
 *A multi-agent research collaborator that helps you discover, understand, and conduct scientific research — not another chatbot wrapper.*
 
+[![CI](https://github.com/LouissMa/researchos/actions/workflows/ci.yml/badge.svg)](https://github.com/LouissMa/researchos/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)](ROADMAP.md)
