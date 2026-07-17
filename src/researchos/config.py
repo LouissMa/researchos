@@ -42,8 +42,21 @@ class Settings(BaseSettings):
     qdrant_mode: str = "embedded"  # embedded | server
     qdrant_url: str = "http://localhost:6333"
 
+    # ---- Sources ----
+    # Comma-separated list: any of arxiv, semantic_scholar, openalex.
+    sources: str = "arxiv,openalex"
+    # A contact email puts OpenAlex requests in the faster "polite pool" (optional).
+    openalex_mailto: str | None = None
+    semantic_scholar_api_key: str | None = Field(
+        default=None, validation_alias="SEMANTIC_SCHOLAR_API_KEY"
+    )
+
     # ---- Ingestion ----
     fetch_pdf: bool = False
+
+    @property
+    def source_list(self) -> list[str]:
+        return [s.strip() for s in self.sources.split(",") if s.strip()]
 
     # ---- Derived paths ----
     @property

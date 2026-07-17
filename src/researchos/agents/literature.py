@@ -1,7 +1,8 @@
-"""Literature Agent — search and relevance ranking.
+"""Literature Agent — multi-source search, cross-source dedup, and relevance ranking.
 
-Owns interaction with source tools (arXiv today; Semantic Scholar / OpenAlex / GitHub
-next) and relevance ranking against the research goal via semantic memory.
+Owns interaction with source tools (arXiv, Semantic Scholar, OpenAlex; GitHub next):
+queries every configured source, merges duplicates into the richest record, and ranks
+the result against the research goal via semantic memory.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 from researchos.agents.base import BaseAgent
 from researchos.core.models import Paper
 from researchos.core.state import AgentResult, ResearchState, StateDelta, Task, TaskKind
+from researchos.ingestion.dedup import dedup_papers
 from researchos.memory.store import SemanticMemory
 from researchos.tools.base import BaseTool
 
@@ -16,8 +18,10 @@ from researchos.tools.base import BaseTool
 class LiteratureAgent(BaseAgent):
     role = "literature"
 
-    def __init__(self, search_tool: BaseTool, memory: SemanticMemory) -> None:
-        self._tool = search_tool
+    def __init__(self, search_tools: list[BaseTool], memory: SemanticMemory) -> None:
+        if not search_tools:
+            raise ValueError("LiteratureAgent needs at least one search tool.")
+        self._tools = search_tools
         self._memory = memory
 
     def run(self, state: ResearchState, task: Task) -> AgentResult:
@@ -30,19 +34,41 @@ class LiteratureAgent(BaseAgent):
     def _search(self, state: ResearchState, task: Task) -> AgentResult:
         query = task.payload.get("query") or state.goal
         limit = int(task.payload.get("limit", 20))
-        result = self._tool.invoke(query=query, limit=limit)
-        if not result.ok:
-            return self._result(ok=False, error=result.error, tool_calls=[self._tool.name])
 
-        papers = [Paper(**d).ensure_id() for d in (result.data or [])]
+        raw: list[Paper] = []
+        reasoning: list[str] = []
+        tool_calls: list[str] = []
+        per_source: dict[str, int] = {}
+        for tool in self._tools:
+            tool_calls.append(tool.name)
+            result = tool.invoke(query=query, limit=limit)
+            if not result.ok:
+                reasoning.append(f"{tool.name} failed: {result.error}")
+                continue
+            found = [Paper(**d).ensure_id() for d in (result.data or [])]
+            per_source[tool.name] = len(found)
+            raw.extend(found)
+            reasoning.append(f"{tool.name}: {len(found)} papers for {query!r}.")
+
+        if not raw:
+            return self._result(
+                ok=False,
+                error="All configured sources returned no results or failed.",
+                reasoning=reasoning,
+                tool_calls=tool_calls,
+            )
+
+        deduped = dedup_papers(raw)
+        removed = len(raw) - len(deduped)
+        reasoning.append(
+            f"Merged {len(raw)} results from {len(per_source)} sources → "
+            f"{len(deduped)} unique papers ({removed} cross-source duplicates)."
+        )
         return self._result(
-            output=f"Found {len(papers)} papers via {self._tool.name}.",
-            delta=StateDelta(add_papers=papers),
-            reasoning=[
-                f"Searched {self._tool.name} for: {query!r} (limit {limit}).",
-                f"Retrieved {len(papers)} candidate papers.",
-            ],
-            tool_calls=[self._tool.name],
+            output=f"Found {len(deduped)} unique papers across {len(per_source)} sources.",
+            delta=StateDelta(add_papers=deduped, scratch={"per_source": per_source}),
+            reasoning=reasoning,
+            tool_calls=tool_calls,
         )
 
     def _rank(self, state: ResearchState, task: Task) -> AgentResult:

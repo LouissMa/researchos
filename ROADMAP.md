@@ -29,8 +29,11 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned
 - ✅ Planner + Literature + Knowledge agents over `ResearchState`
 - ✅ Research cards (heuristic; LLM-authored when a key is configured)
 - ✅ Landscape report artifact + reasoning-trace inspection
-- ⬜ Semantic Scholar + OpenAlex + GitHub tools
-- ⬜ Cross-source dedup + citation-graph coverage check
+- ✅ Semantic Scholar + OpenAlex tools (behind the shared `SourceClient` HTTP layer)
+- ✅ Multi-source search + cross-source dedup (union by DOI / arXiv id / title)
+- ✅ GitHub Actions CI (ruff + offline pytest, Python 3.12 & 3.13)
+- ⬜ GitHub repository search tool
+- ⬜ Citation-graph coverage check ("did we miss seminal work?")
 - ⬜ Minimal React project view + trace timeline
 
 ## Phase 2 — Memory & Critic

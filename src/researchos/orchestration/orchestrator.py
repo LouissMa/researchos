@@ -25,8 +25,8 @@ from researchos.orchestration.planner import Planner
 from researchos.orchestration.report import render_markdown
 from researchos.persistence.db import init_db
 from researchos.persistence.store import Store
-from researchos.tools.arxiv import ArxivTool
 from researchos.tools.base import ToolRegistry
+from researchos.tools.factory import build_search_tools
 
 log = get_logger(__name__)
 
@@ -50,9 +50,11 @@ class SequentialOrchestrator:
         self.llm = get_llm(self.settings)
 
         self.tools = ToolRegistry()
-        self.tools.register(ArxivTool())
+        search_tools = build_search_tools(self.settings)
+        for tool in search_tools:
+            self.tools.register(tool)
 
-        self.literature = LiteratureAgent(self.tools.get("arxiv_search"), self.memory)
+        self.literature = LiteratureAgent(search_tools, self.memory)
         self.knowledge = KnowledgeAgent(self.memory, self.embedder, self.llm)
         self.planner = Planner()
         self.store = Store()

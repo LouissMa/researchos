@@ -98,5 +98,5 @@ def orch(settings):
     from researchos.orchestration.orchestrator import SequentialOrchestrator
 
     o = SequentialOrchestrator(settings)
-    o.literature._tool = FakeArxivTool()  # inject offline tool
+    o.literature._tools = [FakeArxivTool()]  # inject offline tool
     return o

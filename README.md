@@ -37,7 +37,7 @@ It is built to support the *entire* research workflow — literature discovery, 
 
 🚧 **Alpha.** This repository currently ships a **runnable foundation**: a real end-to-end *literature discovery* run that works **offline with zero external services or API keys**.
 
-- ✅ Real **arXiv** search
+- ✅ Real multi-source search — **arXiv + OpenAlex** (Semantic Scholar opt-in), merged and **de-duplicated across sources**
 - ✅ Paper ingestion + chunking (+ optional PDF full text)
 - ✅ Local deterministic **embeddings** (no downloads) → **embedded Qdrant** vector store
 - ✅ Append-only **event log** (SQLite) — every run is replayable
@@ -112,8 +112,8 @@ src/researchos/
   core/           ResearchState, models, the core interfaces (the seams)
   orchestration/  Orchestrator interface + planner (LangGraph-swappable)
   agents/         base · literature · knowledge  (Critic/Idea/Experiment/Writing next)
-  tools/          MCP-style tools: arXiv (+ Semantic Scholar / OpenAlex / GitHub next)
-  ingestion/      PDF (PyMuPDF, optional) · chunking · embedding providers
+  tools/          MCP-style tools: arXiv · OpenAlex · Semantic Scholar (GitHub next)
+  ingestion/      PDF (PyMuPDF, optional) · chunking · dedup · embedding providers
   memory/         vector store (Qdrant) · MemoryStore facade (tiered memory next)
   llm/            LLM interface: null (heuristic) · OpenAI-compatible
   persistence/    SQLAlchemy models · append-only event log
