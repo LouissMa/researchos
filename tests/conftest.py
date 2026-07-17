@@ -81,6 +81,38 @@ class FakeArxivTool(BaseTool):
         return ToolResult(ok=True, data=_FAKE_PAPERS[:limit])
 
 
+class FakeCoverageTool(BaseTool):
+    """Offline coverage tool that reports no missing papers (default)."""
+
+    name = "openalex_search"
+    description = "Offline fake coverage tool."
+    side_effects = False
+
+    def input_schema(self) -> dict[str, Any]:
+        return {"type": "object", "properties": {"query": {"type": "string"}}}
+
+    def invoke(self, **kwargs: Any) -> ToolResult:
+        return ToolResult(ok=True, data=[])
+
+
+class FakeMissingCoverageTool(FakeCoverageTool):
+    """Reports one highly-cited paper absent from the fake corpus → triggers reflection."""
+
+    def invoke(self, **kwargs: Any) -> ToolResult:
+        return ToolResult(
+            ok=True,
+            data=[
+                {
+                    "source": "openalex",
+                    "source_id": "W999",
+                    "title": "A Seminal Missing Paper on Agent Memory",
+                    "abstract": "A widely cited foundational work.",
+                    "citation_count": 1200,
+                }
+            ],
+        )
+
+
 @pytest.fixture(scope="session")
 def settings(tmp_path_factory) -> Settings:
     data_dir = tmp_path_factory.mktemp("researchos_data")
@@ -98,5 +130,7 @@ def orch(settings):
     from researchos.orchestration.orchestrator import SequentialOrchestrator
 
     o = SequentialOrchestrator(settings)
-    o.literature._tools = [FakeArxivTool()]  # inject offline tool
+    o.literature._tools = [FakeArxivTool()]  # inject offline tools
+    o.knowledge._code_tool = None  # no GitHub network in tests
+    o.critic._coverage_tool = FakeCoverageTool()  # no OpenAlex network in tests
     return o

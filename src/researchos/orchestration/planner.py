@@ -30,5 +30,16 @@ class Planner:
                 description="Deep-read the key papers",
                 payload={"top_n": top_cards},
             ),
-            Task(id="t6", kind=TaskKind.LANDSCAPE, description="Assemble the research landscape"),
+            Task(
+                id="t6",
+                kind=TaskKind.CODE,
+                description="Find GitHub implementations for key papers",
+                payload={"top_n": 3},
+            ),
+            Task(id="t7", kind=TaskKind.LANDSCAPE, description="Assemble the research landscape"),
+            Task(
+                id="t8",
+                kind=TaskKind.REVIEW,
+                description="Critic review: coverage, balance, gaps",
+            ),
         ]

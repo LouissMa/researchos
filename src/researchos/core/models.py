@@ -33,6 +33,7 @@ class Paper(BaseModel):
     categories: list[str] = Field(default_factory=list)
     doi: str | None = None
     citation_count: int | None = None
+    code_urls: list[str] = Field(default_factory=list)  # linked code repos (GitHub)
     full_text: str | None = None  # populated only when PDF ingestion is enabled
 
     def ensure_id(self) -> Paper:
@@ -93,3 +94,16 @@ class Landscape(BaseModel):
     clusters: list[Cluster] = Field(default_factory=list)
     key_papers: list[str] = Field(default_factory=list)  # paper ids, most central first
     reading_order: list[str] = Field(default_factory=list)  # paper ids, recommended order
+
+
+class Review(BaseModel):
+    """The Critic's assessment of a landscape (coverage, balance, gaps)."""
+
+    coverage: str = ""
+    cluster_balance: str = ""
+    missing_seminal: list[str] = Field(default_factory=list)  # titles possibly missed
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    score: float = 0.0  # 0–10
+    reviewed_by: str = "critic"

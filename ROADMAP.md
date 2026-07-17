@@ -32,16 +32,18 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned
 - ✅ Semantic Scholar + OpenAlex tools (behind the shared `SourceClient` HTTP layer)
 - ✅ Multi-source search + cross-source dedup (union by DOI / arXiv id / title)
 - ✅ GitHub Actions CI (ruff + offline pytest, Python 3.12 & 3.13)
-- ⬜ GitHub repository search tool
-- ⬜ Citation-graph coverage check ("did we miss seminal work?")
-- ⬜ Minimal React project view + trace timeline
+- ✅ GitHub repository search tool + code linking for key papers
+- ✅ Citation-coverage check ("did we miss seminal work?") — in the Critic
+- ✅ Web dashboard: project view + reasoning-trace timeline (no-build; React SPA still planned)
 
-## Phase 2 — Memory & Critic
+## Phase 2 — Memory & Critic  *(in progress)*
 > *Deliverable: the memory system becomes real infrastructure, and quality is gated.*
 
-- ⬜ Four-tier memory with **reflection / consolidation / forgetting**
+- ✅ **Critic** agent (coverage / balance / score) + **bounded reflection loop**
+- ✅ Tiered memory operations: **consolidation** (themes → concepts), **reflection**
+  (interest profile), **forgetting** (salience decay) on the `memory_item` store
+- ⬜ Structural (knowledge-graph) memory tier + hybrid retrieval
 - ⬜ `RetrievalStrategy` variants (vector vs hybrid vs graph) — swappable & benchmarked
-- ⬜ **Critic** agent + reflection loop with budget
 - ⬜ `benchmarks/` frozen scenarios + eval CI (recall@k, grounding)
 
 ## Phase 3 — Ideas & Review

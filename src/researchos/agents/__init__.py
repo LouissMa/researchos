@@ -2,7 +2,8 @@
 Writing follow behind the same ``Agent`` interface (ARCHITECTURE.md §3)."""
 
 from researchos.agents.base import BaseAgent
+from researchos.agents.critic import CriticAgent
 from researchos.agents.knowledge import KnowledgeAgent
 from researchos.agents.literature import LiteratureAgent
 
-__all__ = ["BaseAgent", "LiteratureAgent", "KnowledgeAgent"]
+__all__ = ["BaseAgent", "LiteratureAgent", "KnowledgeAgent", "CriticAgent"]

@@ -27,7 +27,9 @@ app = typer.Typer(
     help="ResearchOS — an autonomous AI research operating system.", no_args_is_help=True
 )
 runs_app = typer.Typer(help="Inspect past runs.")
+memory_app = typer.Typer(help="Inspect long-term memory.")
 app.add_typer(runs_app, name="runs")
+app.add_typer(memory_app, name="memory")
 console = Console()
 
 _ICONS = {
@@ -88,6 +90,13 @@ def discover(
                 star = "* " if pid in ls.key_papers else ""
                 table.add_row(str(i), f"{star}{p.title}", str(p.year or "-"))
         console.print(table)
+    if state.review:
+        rv = state.review
+        console.print(f"\n[bold]Critic score:[/bold] {rv.score}/10 [dim]({rv.reviewed_by})[/dim]")
+        if rv.missing_seminal:
+            console.print("[yellow]Possibly missing seminal work:[/yellow]")
+            for t in rv.missing_seminal:
+                console.print(f"  - {t}")
     console.print(
         f"\n[green]✓[/green] run [bold]{state.run_id}[/bold] · "
         f"{len(state.papers)} papers · {len(state.clusters)} themes"
@@ -135,6 +144,41 @@ def runs_trace(run_id: str) -> None:
             f"[dim]{r.ts:%H:%M:%S}[/dim] [cyan]{r.actor:>10}[/cyan] "
             f"[bold]{r.type}[/bold] [dim]{r.payload}[/dim]"
         )
+
+
+@memory_app.command("list")
+def memory_list(
+    project: str = typer.Option("default", help="Project id"),
+    kind: str = typer.Option(None, help="Filter: paper | concept | interest"),
+) -> None:
+    """List long-term memory items by salience."""
+    from researchos.memory.manager import MemoryManager
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    table = Table(title=f"Memory · {project}")
+    table.add_column("type")
+    table.add_column("salience", justify="right")
+    table.add_column("pinned", justify="center")
+    table.add_column("content")
+    for item in MemoryManager().list_items(project, ref_type=kind):
+        table.add_row(
+            item.ref_type, f"{item.salience:.3f}", "*" if item.pinned else "", item.content[:80]
+        )
+    console.print(table)
+
+
+@memory_app.command("reflect")
+def memory_reflect(project: str = typer.Option("default", help="Project id")) -> None:
+    """Re-derive the interest profile from past runs."""
+    from researchos.memory.manager import MemoryManager
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    profile = MemoryManager().reflect(project)
+    console.print(f"[green]{profile}[/green]")
 
 
 if __name__ == "__main__":

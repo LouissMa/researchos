@@ -53,6 +53,25 @@ class PaperRow(Base):
     ingested_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
+class MemoryItemRow(Base):
+    """Long-term memory item with salience for consolidation/forgetting (ADR-0002).
+
+    ref_type: "paper" (semantic), "concept" (consolidated theme), "interest" (reflection).
+    """
+
+    __tablename__ = "memory_item"
+
+    id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), index=True)
+    ref_type: Mapped[str] = mapped_column(String(32), index=True)
+    ref_id: Mapped[str] = mapped_column(String(96))
+    content: Mapped[str] = mapped_column(Text, default="")
+    salience: Mapped[float] = mapped_column(Float, default=1.0)
+    pinned: Mapped[bool] = mapped_column(default=False)
+    last_access: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class ArtifactRow(Base):
     __tablename__ = "artifact"
 

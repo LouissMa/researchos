@@ -16,6 +16,7 @@ from researchos.core.interfaces import LLM, EmbeddingProvider
 from researchos.core.models import Cluster, Landscape, Paper, ResearchCard
 from researchos.core.state import AgentResult, ResearchState, StateDelta, Task, TaskKind
 from researchos.memory.store import SemanticMemory
+from researchos.tools.base import BaseTool
 
 _TOKEN_RE = re.compile(r"[a-z][a-z0-9\-]{2,}")
 _STOPWORDS = {
@@ -82,10 +83,17 @@ _CARD_SYSTEM = (
 class KnowledgeAgent(BaseAgent):
     role = "knowledge"
 
-    def __init__(self, memory: SemanticMemory, embedder: EmbeddingProvider, llm: LLM) -> None:
+    def __init__(
+        self,
+        memory: SemanticMemory,
+        embedder: EmbeddingProvider,
+        llm: LLM,
+        code_tool: BaseTool | None = None,
+    ) -> None:
         self._memory = memory
         self._embedder = embedder
         self._llm = llm
+        self._code_tool = code_tool
 
     def run(self, state: ResearchState, task: Task) -> AgentResult:
         if task.kind == TaskKind.INGEST:
@@ -94,9 +102,38 @@ class KnowledgeAgent(BaseAgent):
             return self._cluster(state)
         if task.kind == TaskKind.CARD:
             return self._cards(state, task)
+        if task.kind == TaskKind.CODE:
+            return self._code(state, task)
         if task.kind == TaskKind.LANDSCAPE:
             return self._landscape(state)
         return self._result(ok=False, error=f"Knowledge agent cannot handle {task.kind}")
+
+    # ----------------------------------------------------------------- code
+    def _code(self, state: ResearchState, task: Task) -> AgentResult:
+        if self._code_tool is None:
+            return self._result(output="Code discovery disabled (no GitHub tool).")
+        n = int(task.payload.get("top_n", 3))
+        targets = [state.papers[pid] for pid in state.ranking[:n] if pid in state.papers]
+        enriched: list[Paper] = []
+        found = 0
+        for paper in targets:
+            # GitHub repo search rarely matches a full paper title; use the salient
+            # leading words (drops trailing subtitles) for a better hit rate.
+            query = " ".join(paper.title.split(":")[0].split()[:6])
+            result = self._code_tool.invoke(query=query, limit=2)
+            if not result.ok or not result.data:
+                continue
+            urls = [r["url"] for r in result.data if r.get("url")]
+            if urls:
+                updated = paper.model_copy(update={"code_urls": urls})
+                enriched.append(updated)
+                found += 1
+        return self._result(
+            output=f"Linked GitHub code for {found}/{len(targets)} key papers.",
+            delta=StateDelta(add_papers=enriched),
+            reasoning=[f"Searched GitHub for implementations of {len(targets)} key papers."],
+            tool_calls=[self._code_tool.name] if targets else [],
+        )
 
     # --------------------------------------------------------------- ingest
     def _ingest(self, state: ResearchState) -> AgentResult:

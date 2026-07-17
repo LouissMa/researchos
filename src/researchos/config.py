@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     semantic_scholar_api_key: str | None = Field(
         default=None, validation_alias="SEMANTIC_SCHOLAR_API_KEY"
     )
+    # Code discovery: link papers to GitHub implementations.
+    code_search: bool = True
+    github_token: str | None = Field(default=None, validation_alias="GITHUB_TOKEN")
 
     # ---- Ingestion ----
     fetch_pdf: bool = False

@@ -2,6 +2,7 @@
 
 import pytest
 
+from researchos.tools.github import GitHubTool
 from researchos.tools.openalex import OpenAlexTool, _reconstruct_abstract
 from researchos.tools.semantic_scholar import SemanticScholarTool
 
@@ -13,10 +14,20 @@ def test_openalex_reconstructs_inverted_abstract():
 
 
 def test_source_tools_expose_schema():
-    for tool in (SemanticScholarTool(), OpenAlexTool()):
+    for tool in (SemanticScholarTool(), OpenAlexTool(), GitHubTool()):
         schema = tool.input_schema()
         assert schema["properties"]["query"]["type"] == "string"
         assert not tool.side_effects
+
+
+@pytest.mark.network
+def test_github_live_search():
+    result = GitHubTool().invoke(query="llm agent memory", limit=2)
+    if not result.ok:
+        pytest.skip(f"GitHub unavailable: {result.error}")
+    assert isinstance(result.data, list)
+    if result.data:
+        assert "url" in result.data[0]
 
 
 @pytest.mark.network

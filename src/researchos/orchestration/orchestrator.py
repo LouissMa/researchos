@@ -10,14 +10,17 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
+from researchos.agents.critic import CriticAgent
 from researchos.agents.knowledge import KnowledgeAgent
 from researchos.agents.literature import LiteratureAgent
 from researchos.config import Settings, get_settings
-from researchos.core.state import ResearchState, TaskKind
+from researchos.core.models import Paper
+from researchos.core.state import ResearchState, StateDelta, Task, TaskKind
 from researchos.ingestion.embedding import get_embedding_provider
 from researchos.ingestion.pdf import fetch_pdf_text
 from researchos.llm.client import get_llm
 from researchos.logging import get_logger
+from researchos.memory.manager import MemoryManager
 from researchos.memory.store import SemanticMemory
 from researchos.memory.vector_store import QdrantVectorStore
 from researchos.observability.events import Event, EventEmitter, EventType
@@ -27,6 +30,8 @@ from researchos.persistence.db import init_db
 from researchos.persistence.store import Store
 from researchos.tools.base import ToolRegistry
 from researchos.tools.factory import build_search_tools
+from researchos.tools.github import GitHubTool
+from researchos.tools.openalex import OpenAlexTool
 
 log = get_logger(__name__)
 
@@ -54,10 +59,21 @@ class SequentialOrchestrator:
         for tool in search_tools:
             self.tools.register(tool)
 
+        code_tool = (
+            GitHubTool(token=self.settings.github_token) if self.settings.code_search else None
+        )
+        if code_tool:
+            self.tools.register(code_tool)
+        # A dedicated OpenAlex client powers the Critic's citation-coverage check,
+        # independent of which sources drive discovery.
+        coverage_tool = OpenAlexTool(mailto=self.settings.openalex_mailto)
+
         self.literature = LiteratureAgent(search_tools, self.memory)
-        self.knowledge = KnowledgeAgent(self.memory, self.embedder, self.llm)
+        self.knowledge = KnowledgeAgent(self.memory, self.embedder, self.llm, code_tool=code_tool)
+        self.critic = CriticAgent(self.llm, coverage_tool=coverage_tool)
         self.planner = Planner()
         self.store = Store()
+        self.memory_manager = MemoryManager()
 
         self._router = {
             TaskKind.SEARCH: self.literature,
@@ -65,7 +81,9 @@ class SequentialOrchestrator:
             TaskKind.INGEST: self.knowledge,
             TaskKind.CLUSTER: self.knowledge,
             TaskKind.CARD: self.knowledge,
+            TaskKind.CODE: self.knowledge,
             TaskKind.LANDSCAPE: self.knowledge,
+            TaskKind.REVIEW: self.critic,
         }
         self._events: list[Event] = []
 
@@ -131,8 +149,23 @@ class SequentialOrchestrator:
                 if task.kind == TaskKind.SEARCH and self.settings.fetch_pdf:
                     self._enrich_pdfs(state, emitter)
 
+            # One bounded reflection iteration if the Critic found coverage gaps.
+            self._maybe_reflect(state, emitter)
+
             saved = self.store.save_papers(state)
             emitter.emit("system", EventType.MEMORY_WRITE, {"papers_persisted": saved})
+
+            # Long-term memory maintenance: consolidate themes, reflect on interests,
+            # and apply forgetting so the working set stays sharp (ADR-0002).
+            self.memory_manager.record_paper_memories(state)
+            concepts = self.memory_manager.consolidate(state)
+            profile = self.memory_manager.reflect(project_id)
+            self.memory_manager.decay(project_id)
+            emitter.emit(
+                "system",
+                EventType.MEMORY_WRITE,
+                {"concepts_consolidated": concepts, "interest_profile": profile},
+            )
 
             artifact_uri = self._write_report(state)
             emitter.emit(
@@ -177,6 +210,38 @@ class SequentialOrchestrator:
                 EventType.PAPERS_INGESTED,
                 {"chunks": result.delta.scratch.get("ingested_chunks", 0)},
             )
+
+    def _maybe_reflect(self, state: ResearchState, emitter: EventEmitter) -> None:
+        """Bounded reflection: if the Critic flagged missing seminal papers, add them
+        once and re-ingest / re-rank / re-assemble. Runs at most a single iteration."""
+        if state.reflected:
+            return
+        missing = state.scratch.get("missing_papers") or []
+        if not missing or state.step + 3 > state.max_steps:
+            return
+        state.reflected = True
+        papers = [Paper(**d).ensure_id() for d in missing]
+        state.apply(StateDelta(add_papers=papers))
+        emitter.emit(
+            "planner",
+            EventType.AGENT_MESSAGE,
+            {"text": f"Reflection: added {len(papers)} missing seminal papers; re-ranking."},
+        )
+        for kind in (TaskKind.INGEST, TaskKind.RANK, TaskKind.LANDSCAPE):
+            state.step += 1
+            agent = self._router[kind]
+            task = Task(id=f"reflect-{kind.value}", kind=kind, description="reflection pass")
+            emitter.emit(
+                agent.role, EventType.TASK_STARTED, {"task": kind.value, "reflection": True}
+            )
+            result = agent.run(state, task)
+            if result.ok:
+                state.apply(result.delta)
+                emitter.emit(
+                    agent.role,
+                    EventType.TASK_FINISHED,
+                    {"task": kind.value, "output": result.output},
+                )
 
     def _enrich_pdfs(self, state: ResearchState, emitter: EventEmitter) -> None:
         enriched = 0

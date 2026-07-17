@@ -11,7 +11,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from researchos.core.models import Cluster, Landscape, Paper, ResearchCard
+from researchos.core.models import Cluster, Landscape, Paper, ResearchCard, Review
 
 
 class TaskKind(StrEnum):
@@ -20,6 +20,7 @@ class TaskKind(StrEnum):
     RANK = "rank"
     CLUSTER = "cluster"
     CARD = "card"
+    CODE = "code"
     LANDSCAPE = "landscape"
     REVIEW = "review"
 
@@ -41,6 +42,7 @@ class StateDelta(BaseModel):
     add_clusters: list[Cluster] = Field(default_factory=list)
     add_cards: list[ResearchCard] = Field(default_factory=list)
     set_landscape: Landscape | None = None
+    set_review: Review | None = None
     add_notes: list[str] = Field(default_factory=list)
     scratch: dict = Field(default_factory=dict)
 
@@ -51,6 +53,7 @@ class StateDelta(BaseModel):
             and not self.add_clusters
             and not self.add_cards
             and self.set_landscape is None
+            and self.set_review is None
             and not self.add_notes
             and not self.scratch
         )
@@ -68,12 +71,14 @@ class ResearchState(BaseModel):
     clusters: list[Cluster] = Field(default_factory=list)
     cards: dict[str, ResearchCard] = Field(default_factory=dict)  # by paper_id
     landscape: Landscape | None = None
+    review: Review | None = None
     notes: list[str] = Field(default_factory=list)
     scratch: dict = Field(default_factory=dict)
 
     # Loop / budget control (enforced by the planner).
     step: int = 0
-    max_steps: int = 12
+    max_steps: int = 16
+    reflected: bool = False  # guards the single bounded reflection iteration
 
     def apply(self, delta: StateDelta) -> ResearchState:
         """Apply a delta in place, using explicit per-field reducers."""
@@ -88,6 +93,8 @@ class ResearchState(BaseModel):
             self.cards[card.paper_id] = card
         if delta.set_landscape is not None:
             self.landscape = delta.set_landscape
+        if delta.set_review is not None:
+            self.review = delta.set_review
         if delta.add_notes:
             self.notes.extend(delta.add_notes)
         if delta.scratch:

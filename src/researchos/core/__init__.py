@@ -6,6 +6,7 @@ from researchos.core.models import (
     Paper,
     PaperChunk,
     ResearchCard,
+    Review,
 )
 from researchos.core.state import AgentResult, ResearchState, StateDelta, Task, TaskKind
 
@@ -15,6 +16,7 @@ __all__ = [
     "ResearchCard",
     "Cluster",
     "Landscape",
+    "Review",
     "ResearchState",
     "StateDelta",
     "Task",

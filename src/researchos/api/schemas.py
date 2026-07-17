@@ -48,3 +48,11 @@ class RunSummary(BaseModel):
     project_id: str
     goal: str
     status: str
+
+
+class MemoryItem(BaseModel):
+    ref_type: str
+    ref_id: str
+    content: str
+    salience: float
+    pinned: bool

@@ -20,6 +20,11 @@ def test_full_literature_run(orch):
     assert len(state.landscape.reading_order) == 6
     assert state.landscape.key_papers  # non-empty
 
+    # Critic reviewed the landscape.
+    assert state.review is not None
+    assert 0.0 <= state.review.score <= 10.0
+    assert not state.reflected  # no gaps flagged by the (empty) coverage tool
+
     # The run is fully traced in the append-only event log.
     events = EventLog().list(state.run_id)
     types = {e.type for e in events}

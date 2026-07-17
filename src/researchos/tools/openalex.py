@@ -50,6 +50,9 @@ class OpenAlexTool(BaseTool):
         query: str = kwargs["query"]
         limit: int = int(kwargs.get("limit", 20))
         params: dict[str, Any] = {"search": query, "per_page": limit}
+        sort: str | None = kwargs.get("sort")  # e.g. "cited_by_count:desc"
+        if sort:
+            params["sort"] = sort
         if self._mailto:
             params["mailto"] = self._mailto
         try:

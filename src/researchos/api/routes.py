@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse
 
+from researchos.api.dashboard import DASHBOARD_HTML
 from researchos.api.schemas import (
     EventItem,
     KeyPaper,
+    MemoryItem,
     PaperItem,
     RunRequest,
     RunResponse,
     RunSummary,
 )
+from researchos.memory.manager import MemoryManager
 from researchos.orchestration.orchestrator import SequentialOrchestrator
 from researchos.persistence.event_log import EventLog
 from researchos.persistence.store import Store
@@ -21,6 +25,11 @@ router = APIRouter()
 
 def _orch(request: Request) -> SequentialOrchestrator:
     return request.app.state.orchestrator
+
+
+@router.get("/", response_class=HTMLResponse, include_in_schema=False)
+def dashboard() -> HTMLResponse:
+    return HTMLResponse(DASHBOARD_HTML)
 
 
 @router.get("/health")
@@ -75,4 +84,18 @@ def list_papers(project_id: str) -> list[PaperItem]:
     return [
         PaperItem(id=p.id, title=p.title, source=p.source, url=p.url, published=p.published)
         for p in Store().list_papers(project_id)
+    ]
+
+
+@router.get("/projects/{project_id}/memory", response_model=list[MemoryItem])
+def list_memory(project_id: str, kind: str | None = None) -> list[MemoryItem]:
+    return [
+        MemoryItem(
+            ref_type=m.ref_type,
+            ref_id=m.ref_id,
+            content=m.content,
+            salience=m.salience,
+            pinned=m.pinned,
+        )
+        for m in MemoryManager().list_items(project_id, ref_type=kind)
     ]

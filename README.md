@@ -40,10 +40,13 @@ It is built to support the *entire* research workflow — literature discovery, 
 - ✅ Real multi-source search — **arXiv + OpenAlex** (Semantic Scholar opt-in), merged and **de-duplicated across sources**
 - ✅ Paper ingestion + chunking (+ optional PDF full text)
 - ✅ Local deterministic **embeddings** (no downloads) → **embedded Qdrant** vector store
+- ✅ **GitHub code linking** — finds implementations for the key papers
+- ✅ **Planner → Literature → Knowledge → Critic** agents over a shared `ResearchState`
+- ✅ **Critic agent**: citation-coverage review ("are we missing seminal work?") + a bounded **reflection loop** that adds the gaps and re-ranks
+- ✅ **Tiered memory operations** — consolidation (themes → concepts), reflection (interest profile), forgetting (salience decay)
 - ✅ Append-only **event log** (SQLite) — every run is replayable
-- ✅ **Planner → Literature → Knowledge** agents over a shared `ResearchState`
 - ✅ Landscape report artifact + streaming reasoning trace
-- ✅ FastAPI service **and** CLI
+- ✅ FastAPI service, a **no-build web dashboard**, and a CLI
 
 Everything heavy or paid (LLM, GROBID, server-mode Qdrant, Neo4j, BGE embeddings) is **optional and pluggable** behind an interface. See the [ROADMAP](ROADMAP.md) for what's next.
 
@@ -69,10 +72,16 @@ uv run researchos runs list
 uv run researchos runs trace <run_id>
 ```
 
-Or run it as an API:
+Inspect long-term memory (concepts consolidated, interest profile, salience):
 
 ```bash
-uv run researchos serve            # http://127.0.0.1:8000/docs
+uv run researchos memory list
+```
+
+Or run it as a service with a **web dashboard** (project view + reasoning-trace timeline):
+
+```bash
+uv run researchos serve            # dashboard at http://127.0.0.1:8000/  ·  API docs at /docs
 ```
 
 ```bash
@@ -97,10 +106,12 @@ Without a key, the same pipeline runs and produces **heuristic** (extractive) ca
 ```
 User goal
   → Planner decomposes into tasks
-  → Literature Agent  → arXiv tool → ingest → embed → Qdrant → rank/cluster
-  → Knowledge Agent   → research cards + landscape + memory writes
-  → (Critic gates quality)          ← every step emits events
-  → Artifacts + replayable trace
+  → Literature Agent  → arXiv + OpenAlex → dedup → ingest → embed → Qdrant → rank
+  → Knowledge Agent   → cluster → research cards → GitHub code links → landscape
+  → Critic Agent      → citation-coverage review + score
+  → Reflection loop   → add missing seminal papers → re-rank (bounded, once)
+  → Memory ops        → consolidate themes · reflect interests · decay salience
+  → Artifacts + replayable trace      ← every step emits events
 ```
 
 Runs are stateful and checkpointable; agents never mutate global state directly — they return **state deltas** that the runtime applies, so every change is diffable, auditable, and replayable from the event log.
@@ -110,16 +121,16 @@ Runs are stateful and checkpointable; agents never mutate global state directly 
 ```
 src/researchos/
   core/           ResearchState, models, the core interfaces (the seams)
-  orchestration/  Orchestrator interface + planner (LangGraph-swappable)
-  agents/         base · literature · knowledge  (Critic/Idea/Experiment/Writing next)
-  tools/          MCP-style tools: arXiv · OpenAlex · Semantic Scholar (GitHub next)
+  orchestration/  Orchestrator interface + planner + bounded reflection (LangGraph-swappable)
+  agents/         base · literature · knowledge · critic  (Idea/Experiment/Writing next)
+  tools/          MCP-style tools: arXiv · OpenAlex · Semantic Scholar · GitHub
   ingestion/      PDF (PyMuPDF, optional) · chunking · dedup · embedding providers
-  memory/         vector store (Qdrant) · MemoryStore facade (tiered memory next)
+  memory/         vector store (Qdrant) · SemanticMemory · MemoryManager (consolidate/reflect/decay)
   llm/            LLM interface: null (heuristic) · OpenAI-compatible
   persistence/    SQLAlchemy models · append-only event log
   observability/  event types + emitter (OpenTelemetry next)
-  api/            FastAPI app, routes, schemas
-  cli.py          typer CLI
+  api/            FastAPI app · routes · schemas · no-build web dashboard
+  cli.py          typer CLI (discover · runs · memory · serve)
 docs/adr/         architecture decision records
 examples/         runnable scripts
 tests/            unit + integration
