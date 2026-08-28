@@ -11,7 +11,14 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from researchos.core.models import Cluster, Landscape, Paper, ResearchCard, Review
+from researchos.core.models import (
+    Cluster,
+    Landscape,
+    Paper,
+    ResearchCard,
+    ResearchIdea,
+    Review,
+)
 
 
 class TaskKind(StrEnum):
@@ -23,6 +30,7 @@ class TaskKind(StrEnum):
     CODE = "code"
     LANDSCAPE = "landscape"
     REVIEW = "review"
+    IDEA = "idea"
 
 
 class Task(BaseModel):
@@ -41,6 +49,7 @@ class StateDelta(BaseModel):
     set_ranking: list[str] | None = None
     add_clusters: list[Cluster] = Field(default_factory=list)
     add_cards: list[ResearchCard] = Field(default_factory=list)
+    add_ideas: list[ResearchIdea] = Field(default_factory=list)
     set_landscape: Landscape | None = None
     set_review: Review | None = None
     add_notes: list[str] = Field(default_factory=list)
@@ -52,6 +61,7 @@ class StateDelta(BaseModel):
             and self.set_ranking is None
             and not self.add_clusters
             and not self.add_cards
+            and not self.add_ideas
             and self.set_landscape is None
             and self.set_review is None
             and not self.add_notes
@@ -70,6 +80,7 @@ class ResearchState(BaseModel):
     ranking: list[str] = Field(default_factory=list)  # paper ids, best first
     clusters: list[Cluster] = Field(default_factory=list)
     cards: dict[str, ResearchCard] = Field(default_factory=dict)  # by paper_id
+    ideas: list[ResearchIdea] = Field(default_factory=list)
     landscape: Landscape | None = None
     review: Review | None = None
     notes: list[str] = Field(default_factory=list)
@@ -91,6 +102,8 @@ class ResearchState(BaseModel):
             self.clusters.extend(delta.add_clusters)
         for card in delta.add_cards:
             self.cards[card.paper_id] = card
+        if delta.add_ideas:
+            self.ideas.extend(delta.add_ideas)
         if delta.set_landscape is not None:
             self.landscape = delta.set_landscape
         if delta.set_review is not None:

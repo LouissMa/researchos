@@ -11,6 +11,7 @@ import uuid
 from collections.abc import Callable
 
 from researchos.agents.critic import CriticAgent
+from researchos.agents.idea import IdeaAgent
 from researchos.agents.knowledge import KnowledgeAgent
 from researchos.agents.literature import LiteratureAgent
 from researchos.config import Settings, get_settings
@@ -82,6 +83,7 @@ class SequentialOrchestrator:
         self.literature = LiteratureAgent(search_tools, self.memory)
         self.knowledge = KnowledgeAgent(self.memory, self.embedder, self.llm, code_tool=code_tool)
         self.critic = CriticAgent(self.llm, coverage_tool=coverage_tool)
+        self.idea = IdeaAgent(self.llm)
         self.planner = Planner()
         self.store = Store()
         self.memory_manager = MemoryManager()
@@ -95,6 +97,7 @@ class SequentialOrchestrator:
             TaskKind.CODE: self.knowledge,
             TaskKind.LANDSCAPE: self.knowledge,
             TaskKind.REVIEW: self.critic,
+            TaskKind.IDEA: self.idea,
         }
         self._events: list[Event] = []
 
@@ -197,6 +200,30 @@ class SequentialOrchestrator:
                         "total_nodes": gstats["nodes"],
                         "total_edges": gstats["edges"],
                     },
+                )
+
+            # Idea agent: gap analysis over the landscape → grounded research proposals.
+            # Runs after memory ops so it sees the current run's reflected interests.
+            emitter.emit(
+                self.idea.role,
+                EventType.TASK_STARTED,
+                {"task": "idea", "description": "Gap analysis → research proposals"},
+            )
+            idea_result = self.idea.run(
+                state, Task(id="t9", kind=TaskKind.IDEA, description="gap analysis")
+            )
+            if idea_result.ok:
+                state.apply(idea_result.delta)
+                emitter.emit(
+                    self.idea.role,
+                    EventType.TASK_FINISHED,
+                    {"task": "idea", "ok": True, "output": idea_result.output},
+                )
+                saved_ideas = self.store.save_ideas(state)
+                emitter.emit(
+                    "system",
+                    EventType.IDEAS_GENERATED,
+                    {"ideas_saved": saved_ideas, "total": len(state.ideas)},
                 )
 
             artifact_uri = self._write_report(state)

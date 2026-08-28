@@ -111,3 +111,22 @@ class KGEdgeRow(Base):
     provenance: Mapped[dict] = mapped_column(JSON, default=dict)
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class IdeaRow(Base):
+    """A grounded research proposal produced by the Idea agent (Phase 3)."""
+
+    __tablename__ = "idea"
+
+    id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), index=True)
+    run_id: Mapped[str] = mapped_column(String(64), index=True)
+    title: Mapped[str] = mapped_column(Text)
+    hypothesis: Mapped[str] = mapped_column(Text, default="")
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    gap: Mapped[str] = mapped_column(Text, default="")
+    grounding: Mapped[dict] = mapped_column(JSON, default=list)  # cluster/paper ids
+    novelty: Mapped[float] = mapped_column(Float, default=0.0)
+    feasibility: Mapped[float] = mapped_column(Float, default=0.0)
+    generated_by: Mapped[str] = mapped_column(String(32), default="heuristic")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

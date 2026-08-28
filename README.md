@@ -46,7 +46,10 @@ It is built to support the *entire* research workflow — literature discovery, 
 - ✅ **Tiered memory operations** — consolidation (themes → concepts), reflection (interest profile), forgetting (salience decay)
 - ✅ **Structural memory tier** — a knowledge graph (SQLite-backed, Neo4j-swappable) of papers/concepts with **provenance-carrying edges**; ungrounded edges are rejected at write time
 - ✅ **Swappable retrieval strategies** — `vector` (embeddings) · `graph` (structural traversal) · `hybrid` (RRF fusion), selected via `RESEARCHOS_RETRIEVAL_STRATEGY`
-- ✅ **Frozen offline benchmarks** (`benchmarks/`) — recall@k + grounding per strategy on 4 scenarios, run in CI
+- ✅ **Idea agent** — gap analysis over the landscape (cross-theme bridges, under-explored themes, recurring-interest alignment, isolated contributions) → grounded research proposals
+- ✅ **Reviewer capability** — per-paper strengths / weaknesses / novelty / score (`researchos review`), with a frozen offline benchmark in CI
+- ✅ **Graph analytics + visualization** — degree centrality (seminal candidates), community detection, and a dashboard Graph tab (SVG)
+- ✅ **Frozen offline benchmarks** (`benchmarks/`) — recall@k + grounding per strategy on 4 scenarios + reviewer tier ordering, run in CI
 - ✅ Append-only **event log** (SQLite) — every run is replayable
 - ✅ Landscape report artifact + streaming reasoning trace
 - ✅ FastAPI service, a **no-build web dashboard**, and a CLI
@@ -86,6 +89,14 @@ Inspect the knowledge graph — the structural memory tier:
 ```bash
 uv run researchos graph stats     # nodes / edges by type
 uv run researchos graph edges     # provenance-carrying relations
+uv run researchos graph analytics # degree centrality + communities (seminal candidates)
+```
+
+Explore what's worth doing next and how strong each paper looks:
+
+```bash
+uv run researchos ideas list                 # grounded research proposals (Idea agent)
+uv run researchos review <paper_id>          # strengths / weaknesses / novelty / score
 ```
 
 Compare retrieval strategies against the frozen benchmark suite (offline):
@@ -130,6 +141,7 @@ User goal
   → Reflection loop   → add missing seminal papers → re-rank (bounded, once)
   → Memory ops        → consolidate themes · reflect interests · decay salience
   → Knowledge graph   → paper/concept nodes + grounded edges (structural tier)
+  → Idea Agent        → gap analysis → grounded research proposals
   → Artifacts + replayable trace      ← every step emits events
 ```
 
@@ -145,7 +157,7 @@ Runs are stateful and checkpointable; agents never mutate global state directly 
 src/researchos/
   core/           ResearchState, models, the core interfaces (the seams)
   orchestration/  Orchestrator interface + planner + bounded reflection (LangGraph-swappable)
-  agents/         base · literature · knowledge · critic  (Idea/Experiment/Writing next)
+  agents/         base · literature · knowledge · critic · idea  (Experiment/Writing next)
   tools/          MCP-style tools: arXiv · OpenAlex · Semantic Scholar · GitHub
   ingestion/      PDF (PyMuPDF, optional) · chunking · dedup · embedding providers
   memory/         vector store (Qdrant) · graph store + builder · retrieval strategies · MemoryManager

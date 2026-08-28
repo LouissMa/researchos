@@ -51,11 +51,17 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned
 - ✅ `benchmarks/` frozen scenarios (19-paper corpus, 4 topics) + eval CI:
   recall@5, grounding@5, MRR per strategy, per-scenario thresholds
 
-## Phase 3 — Ideas & Review
-- ⬜ **Idea** agent: gap analysis over the knowledge graph → research proposals
-- ⬜ **Reviewer** capability (strengths/weaknesses/novelty/score) benchmarked vs OpenReview
-- ⬜ Knowledge-graph visualization
-- ⬜ Introduce **Neo4j** for graph analytics (centrality, community detection)
+## Phase 3 — Ideas & Review  *(complete)*
+- ✅ **Idea** agent: gap analysis over the knowledge graph → grounded research proposals
+  (cross-cluster bridges · under-explored themes · recurring-interest alignment ·
+  isolated contributions); heuristic offline + LLM mode
+- ✅ **Reviewer** capability (strengths/weaknesses/novelty/feasibility/score) + frozen
+  offline benchmark (`benchmarks/run_reviewer_eval.py`, tier ordering + score bands) in CI
+- ✅ Knowledge-graph visualization — dashboard **Graph tab** (SVG, node-type colors) +
+  `/projects/{id}/graph/viz` endpoint
+- ✅ Lightweight graph analytics in SQLite (degree centrality → seminal candidates,
+  connected components → communities) via `researchos graph analytics`; **Neo4j remains
+  the v2 drop-in** per ADR-0003 once multi-hop analytics dominate
 
 ## Phase 4 — Experiments (highest risk, deliberately last)
 - ⬜ **Experiment** agent: plan → code template → sandboxed run → analyze

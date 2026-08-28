@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from researchos.core.state import ResearchState
 from researchos.persistence.db import get_session
-from researchos.persistence.models import ArtifactRow, PaperRow, RunRow
+from researchos.persistence.models import ArtifactRow, IdeaRow, PaperRow, RunRow
 
 
 class Store:
@@ -80,4 +80,41 @@ class Store:
     def list_artifacts(self, run_id: str) -> list[ArtifactRow]:
         with get_session() as s:
             stmt = select(ArtifactRow).where(ArtifactRow.run_id == run_id)
+            return list(s.scalars(stmt).all())
+
+    # ---- ideas ----
+    def save_ideas(self, state: ResearchState) -> int:
+        """Persist the run's research proposals (idempotent by idea id)."""
+        n = 0
+        with get_session() as s:
+            for idea in state.ideas:
+                if s.get(IdeaRow, idea.id) is not None:
+                    continue
+                s.add(
+                    IdeaRow(
+                        id=idea.id,
+                        project_id=state.project_id,
+                        run_id=state.run_id,
+                        title=idea.title,
+                        hypothesis=idea.hypothesis,
+                        rationale=idea.rationale,
+                        gap=idea.gap,
+                        grounding=idea.grounding,
+                        novelty=idea.novelty,
+                        feasibility=idea.feasibility,
+                        generated_by=idea.generated_by,
+                    )
+                )
+                n += 1
+            s.commit()
+        return n
+
+    def list_ideas(self, project_id: str, limit: int = 100) -> list[IdeaRow]:
+        with get_session() as s:
+            stmt = (
+                select(IdeaRow)
+                .where(IdeaRow.project_id == project_id)
+                .order_by(IdeaRow.created_at.desc(), IdeaRow.novelty.desc())
+                .limit(limit)
+            )
             return list(s.scalars(stmt).all())

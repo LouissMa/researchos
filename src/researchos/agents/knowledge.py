@@ -195,7 +195,7 @@ class KnowledgeAgent(BaseAgent):
             card = self._llm_card(paper)
             if card is not None:
                 return card
-        return _heuristic_card(paper)
+        return heuristic_card(paper)
 
     def _llm_card(self, paper: Paper) -> ResearchCard | None:
         prompt = (
@@ -304,7 +304,7 @@ def _cluster_keywords(papers: list[Paper], top: int = 3) -> list[str]:
     return [tok for tok, _ in ranked[:top]]
 
 
-def _heuristic_card(paper: Paper) -> ResearchCard:
+def heuristic_card(paper: Paper) -> ResearchCard:
     sentences = re.split(r"(?<=[.!?])\s+", paper.abstract.strip())
     problem = sentences[0] if sentences and sentences[0] else "unknown"
     key_idea = " ".join(sentences[1:3]) if len(sentences) > 1 else paper.abstract[:300]

@@ -72,3 +72,31 @@ class GraphResponse(BaseModel):
     edges: int
     by_type: dict[str, int]
     sample_edges: list[GraphEdgeItem]
+
+
+class GraphVizNode(BaseModel):
+    id: str
+    label: str
+    node_type: str
+
+
+class GraphVizEdge(BaseModel):
+    source: str
+    target: str
+    relation: str
+
+
+class GraphVizResponse(BaseModel):
+    nodes: list[GraphVizNode]
+    edges: list[GraphVizEdge]
+
+
+class IdeaItem(BaseModel):
+    id: str
+    title: str
+    hypothesis: str
+    gap: str
+    grounding: list[str]
+    novelty: float
+    feasibility: float
+    generated_by: str

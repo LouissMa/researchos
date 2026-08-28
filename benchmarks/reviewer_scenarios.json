@@ -1,0 +1,39 @@
+{
+  "scenarios": [
+    {
+      "id": "strong-paper",
+      "gold_tier": "strong",
+      "paper": {
+        "source": "arxiv",
+        "source_id": "2501.00001",
+        "title": "Robust Retrieval-Augmented Generation with Adaptive Query Rewriting",
+        "abstract": "Retrieval-augmented generation systems struggle when the user query does not match the document collection vocabulary. We propose AdaptiveQueryRewrite, a lightweight module that rewrites the query before retrieval using the document index statistics. Experiments on four benchmarks show a 12.4% average accuracy improvement over the strongest baseline, with a 1.8x speedup in end-to-end latency. A limitation is that the rewriter is trained on domain-specific data and may not transfer to new domains."
+      }
+    },
+    {
+      "id": "mid-paper",
+      "gold_tier": "mid",
+      "paper": {
+        "source": "arxiv",
+        "source_id": "2501.00002",
+        "title": "On the Effect of Prompt Ordering in Language Model Agents",
+        "abstract": "We study how the ordering of instructions and few-shot examples affects language model agent performance. Our framework covers both zero-shot and few-shot settings across several tasks."
+      }
+    },
+    {
+      "id": "weak-paper",
+      "gold_tier": "weak",
+      "paper": {
+        "source": "arxiv",
+        "source_id": "2501.00003",
+        "title": "A Note on Agent Memory",
+        "abstract": "We briefly discuss memory in agents."
+      }
+    }
+  ],
+  "tiers": {
+    "strong": { "min_score": 5.0, "max_score": 10.0 },
+    "mid": { "min_score": 1.5, "max_score": 7.0 },
+    "weak": { "min_score": 0.0, "max_score": 4.0 }
+  }
+}

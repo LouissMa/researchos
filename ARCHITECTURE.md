@@ -93,7 +93,8 @@ first-class control loop gating Idea/Writing output; (2) a **reflection loop wit
 agents may retry after Critic feedback, but the Planner enforces max-iterations and cost.
 
 The MVP ships **2 agents** (Literature + Knowledge) behind this interface. Adding the rest is
-config, not rearchitecture.
+config, not rearchitecture. Phase 3 adds **Idea** (gap analysis over the landscape) and the
+standalone **Reviewer** capability; Experiment and Writing follow in Phase 4/5.
 
 ---
 

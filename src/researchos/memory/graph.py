@@ -256,6 +256,53 @@ class SqliteGraphStore:
             for r in rows
         ]
 
+    # --------------------------------------------------------- analytics
+    def centrality(self, project_id: str, limit: int = 20) -> list[tuple[str, int, float]]:
+        """Degree centrality — top-connected nodes (seminal-paper candidates).
+
+        Edges are treated as undirected and de-duplicated per node pair, so degrees stay
+        bounded by the node count. Returns ``(node_id, degree, normalized)`` best-first.
+        Lightweight stand-in for Neo4j centrality until multi-hop analytics dominate
+        (ADR-0003).
+        """
+        with get_session() as s:
+            edges = list(s.scalars(select(KGEdgeRow).where(KGEdgeRow.project_id == project_id)))
+        pairs = {frozenset((e.source_id, e.target_id)) for e in edges}
+        degrees: dict[str, int] = {}
+        for a, b in pairs:
+            degrees[a] = degrees.get(a, 0) + 1
+            degrees[b] = degrees.get(b, 0) + 1
+        n = max(len(degrees), 2)
+        ranked = sorted(degrees.items(), key=lambda kv: (-kv[1], kv[0]))
+        return [(nid, d, round(d / (n - 1), 3)) for nid, d in ranked[:limit]]
+
+    def components(self, project_id: str) -> list[list[str]]:
+        """Connected components over the graph — lightweight community detection."""
+        with get_session() as s:
+            nodes = list(s.scalars(select(KGNodeRow).where(KGNodeRow.project_id == project_id)))
+            edges = list(s.scalars(select(KGEdgeRow).where(KGEdgeRow.project_id == project_id)))
+        parent = {n.id: n.id for n in nodes}
+
+        def find(x: str) -> str:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a: str, b: str) -> None:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+
+        for e in edges:
+            if e.source_id in parent and e.target_id in parent:
+                union(e.source_id, e.target_id)
+        groups: dict[str, list[str]] = {}
+        for nid in parent:
+            groups.setdefault(find(nid), []).append(nid)
+        comps = sorted(groups.values(), key=len, reverse=True)
+        return [sorted(c) for c in comps]
+
     # ---------------------------------------------------------- retrieval
     def search(self, query: str, k: int, project_id: str) -> list[tuple[str, float]]:
         """Structural retrieval: keyword-seed nodes, then traverse weighted edges.

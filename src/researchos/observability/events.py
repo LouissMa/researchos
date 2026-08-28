@@ -31,6 +31,7 @@ class EventType(StrEnum):
     PAPERS_INGESTED = "papers_ingested"
     MEMORY_WRITE = "memory_write"
     GRAPH_WRITE = "graph_write"
+    IDEAS_GENERATED = "ideas_generated"
     ARTIFACT_SAVED = "artifact_saved"
 
 

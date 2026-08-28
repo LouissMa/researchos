@@ -12,7 +12,7 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 
-def _stable_id(*parts: str) -> str:
+def stable_id(*parts: str) -> str:
     """Deterministic short id from its parts — makes runs reproducible and dedup easy."""
     digest = hashlib.sha1("::".join(parts).encode("utf-8")).hexdigest()
     return digest[:16]
@@ -38,7 +38,7 @@ class Paper(BaseModel):
 
     def ensure_id(self) -> Paper:
         if not self.id:
-            self.id = _stable_id(self.source, self.source_id or self.title)
+            self.id = stable_id(self.source, self.source_id or self.title)
         return self
 
     @property
@@ -136,3 +136,34 @@ class GraphEdge(BaseModel):
     target_id: str
     provenance: dict = Field(default_factory=dict)
     confidence: float = 1.0
+
+
+class ResearchIdea(BaseModel):
+    """A research proposal derived from gap analysis over the knowledge graph (Phase 3).
+
+    Every idea must be **grounded**: ``grounding`` lists the cluster/paper ids that
+    support the gap claim, so proposals stay traceable (never free-floating hunches).
+    """
+
+    id: str
+    title: str
+    hypothesis: str
+    rationale: str  # why this gap matters
+    gap: str  # what the landscape is missing
+    grounding: list[str] = Field(default_factory=list)  # cluster ids / paper ids
+    novelty: float = 0.0  # 0–1 heuristic
+    feasibility: float = 0.0  # 0–1 heuristic
+    generated_by: str = "heuristic"  # "heuristic" | "llm:<model>"
+
+
+class PaperReview(BaseModel):
+    """The Reviewer's assessment of a single paper (strengths/weaknesses/novelty/score)."""
+
+    paper_id: str
+    summary: str = ""
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    novelty: float = 0.0  # 0–1
+    feasibility: float = 0.0  # 0–1
+    score: float = 0.0  # 0–10
+    reviewed_by: str = "heuristic"  # "heuristic" | "llm:<model>"

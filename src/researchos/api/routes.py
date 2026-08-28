@@ -10,6 +10,10 @@ from researchos.api.schemas import (
     EventItem,
     GraphEdgeItem,
     GraphResponse,
+    GraphVizEdge,
+    GraphVizNode,
+    GraphVizResponse,
+    IdeaItem,
     KeyPaper,
     MemoryItem,
     PaperItem,
@@ -126,3 +130,37 @@ def project_graph(project_id: str) -> GraphResponse:
         by_type=stats["by_type"],
         sample_edges=sample_edges,
     )
+
+
+@router.get("/projects/{project_id}/graph/viz", response_model=GraphVizResponse)
+def project_graph_viz(project_id: str) -> GraphVizResponse:
+    """Full node/edge dump for client-side graph rendering (dashboard Graph tab)."""
+    store = SqliteGraphStore()
+    nodes = [
+        GraphVizNode(id=n.id, label=n.label[:64], node_type=n.node_type)
+        for n in store.nodes(project_id, limit=200)
+    ]
+    edges = [
+        GraphVizEdge(source=e.source_id, target=e.target_id, relation=e.relation)
+        for e in store.edges(project_id, limit=400)
+        if any(e.source_id == n.id for n in nodes) and any(e.target_id == n.id for n in nodes)
+    ]
+    return GraphVizResponse(nodes=nodes, edges=edges)
+
+
+@router.get("/projects/{project_id}/ideas", response_model=list[IdeaItem])
+def list_ideas(project_id: str) -> list[IdeaItem]:
+    """Grounded research proposals from the Idea agent."""
+    return [
+        IdeaItem(
+            id=i.id,
+            title=i.title,
+            hypothesis=i.hypothesis,
+            gap=i.gap,
+            grounding=[str(g) for g in (i.grounding or [])],
+            novelty=i.novelty,
+            feasibility=i.feasibility,
+            generated_by=i.generated_by,
+        )
+        for i in Store().list_ideas(project_id)
+    ]

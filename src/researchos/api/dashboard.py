@@ -69,10 +69,12 @@ DASHBOARD_HTML = """<!doctype html>
       <button data-tab="trace" class="active" onclick="tab('trace')">Reasoning trace</button>
       <button data-tab="papers" onclick="tab('papers')">Papers</button>
       <button data-tab="memory" onclick="tab('memory')">Memory</button>
+      <button data-tab="graph" onclick="tab('graph')">Graph</button>
     </div>
     <div id="trace" class="muted">Select a run to see its reasoning trace.</div>
     <div id="papers" style="display:none" class="muted">—</div>
     <div id="memory" style="display:none" class="muted">—</div>
+    <div id="graph" style="display:none" class="muted">—</div>
   </div>
 </div>
 <script>
@@ -121,10 +123,31 @@ async function loadMemory() {
     : '<span class="muted">No memory items yet.</span>';
 }
 
+const GRAPH_COLORS = {paper:"#6ea8fe", concept:"#4ade80", method:"#fbbf24", dataset:"#c084fc", venue:"#f472b6", default:"#8b93a7"};
+async function loadGraph() {
+  const el = document.getElementById("graph");
+  el.innerHTML = "loading…";
+  const g = await j(`/projects/${PROJECT}/graph/viz`);
+  const nodes = g.nodes.slice(0, 120);
+  if(!nodes.length){ el.innerHTML = '<span class="muted">No graph yet — run a discovery first.</span>'; return; }
+  const ids = new Set(nodes.map(n => n.id));
+  const edges = g.edges.filter(e => ids.has(e.source) && ids.has(e.target));
+  const W = 640, H = 480, cx = W/2, cy = H/2, R = Math.min(cx, cy) - 44;
+  const pos = {};
+  nodes.forEach((n, i) => { const a = 2*Math.PI*i/nodes.length - Math.PI/2; pos[n.id] = [cx + R*Math.cos(a), cy + R*Math.sin(a)]; });
+  const lines = edges.map(e => { const [x1, y1] = pos[e.source], [x2, y2] = pos[e.target];
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#262b38" stroke-width="1"/>`; }).join("");
+  const dots = nodes.map(n => { const [x, y] = pos[n.id]; const c = GRAPH_COLORS[n.node_type] || GRAPH_COLORS.default;
+    return `<g><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="${c}"><title>${escapeHtml(n.label)}</title></circle>
+      <text x="${x.toFixed(1)}" y="${(y-10).toFixed(1)}" text-anchor="middle" font-size="9" fill="#8b93a7">${escapeHtml(n.label.slice(0, 26))}</text></g>`; }).join("");
+  el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${lines}${dots}</svg>
+    <div class="muted" style="margin-top:8px">${nodes.length} nodes · ${edges.length} edges · nodes colored by type (paper/concept/…)</div>`;
+}
+
 function tab(name) {
-  for(const t of ["trace","papers","memory"]) document.getElementById(t).style.display = t===name?"block":"none";
+  for(const t of ["trace","papers","memory","graph"]) document.getElementById(t).style.display = t===name?"block":"none";
   document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab===name));
-  if(name==="papers") loadPapers(); if(name==="memory") loadMemory();
+  if(name==="papers") loadPapers(); if(name==="memory") loadMemory(); if(name==="graph") loadGraph();
 }
 
 async function startRun() {

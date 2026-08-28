@@ -46,6 +46,7 @@ _ICONS = {
     EventType.PAPERS_INGESTED: "[cyan]index[/cyan]",
     EventType.MEMORY_WRITE: "[cyan]mem  [/cyan]",
     EventType.GRAPH_WRITE: "[magenta]graph[/magenta]",
+    EventType.IDEAS_GENERATED: "[yellow]idea [/yellow]",
     EventType.ARTIFACT_SAVED: "[green]save [/green]",
     EventType.RUN_FINISHED: "[green]fin  [/green]",
     EventType.RUN_FAILED: "[red]fail [/red]",
@@ -227,6 +228,124 @@ def graph_edges(
         prov = e.provenance.get("tool") or e.provenance.get("source_paper") or ""
         table.add_row(e.relation, e.source_id, e.target_id, f"{e.confidence:.2f}", prov)
     console.print(table)
+
+
+@graph_app.command("analytics")
+def graph_analytics(project: str = typer.Option("default", help="Project id")) -> None:
+    """Graph analytics: degree centrality (seminal candidates) + communities."""
+    from researchos.memory.graph import SqliteGraphStore
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    store = SqliteGraphStore()
+    stats = store.stats(project)
+    console.print(
+        f"[green]Graph analytics · {project}[/green]: {stats['nodes']} nodes, "
+        f"{stats['edges']} edges"
+    )
+
+    labels = {n.id: f"[{n.node_type}] {n.label[:48]}" for n in store.nodes(project, limit=500)}
+    top = store.centrality(project, limit=8)
+    if top:
+        console.print("\n[bold]Most connected (seminal candidates):[/bold]")
+        for nid, degree, _norm in top:
+            console.print(f"  {degree:>3} links · {labels.get(nid, nid)}")
+    comps = [c for c in store.components(project) if len(c) > 1]
+    if comps:
+        console.print("\n[bold]Communities (connected components):[/bold]")
+        for comp in comps[:6]:
+            shown = ", ".join(labels.get(n, n) for n in comp[:4])
+            more = f" … +{len(comp) - 4}" if len(comp) > 4 else ""
+            console.print(f"  [{len(comp):>3}] {shown}{more}")
+
+
+ideas_app = typer.Typer(help="Inspect research proposals (Idea agent).")
+app.add_typer(ideas_app, name="ideas")
+
+
+@ideas_app.command("list")
+def ideas_list(
+    project: str = typer.Option("default", help="Project id"),
+    limit: int = typer.Option(20, help="Max ideas to show"),
+) -> None:
+    """List grounded research proposals from past runs."""
+    from researchos.persistence.store import Store
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    ideas = Store().list_ideas(project, limit=limit)
+    if not ideas:
+        console.print(f"[red]No ideas for project {project}[/red]")
+        raise typer.Exit(1)
+    for idea in ideas:
+        console.print(f"\n[bold]{idea.title}[/bold] [dim]({idea.generated_by})[/dim]")
+        console.print(f"  novelty {idea.novelty:.2f} · feasibility {idea.feasibility:.2f}")
+        if idea.hypothesis:
+            console.print(f"  [dim]hypothesis:[/dim] {idea.hypothesis[:160]}")
+        if idea.grounding:
+            console.print(f"  [dim]grounded in:[/dim] {', '.join(idea.grounding[:6])}")
+
+
+@app.command()
+def review(
+    paper_id: str = typer.Argument(..., help="Paper id from a previous run"),
+    project: str = typer.Option("default", help="Project id (context corpus)"),
+) -> None:
+    """Review a paper's research card: strengths / weaknesses / novelty / score."""
+    from researchos.agents.knowledge import heuristic_card
+    from researchos.agents.reviewer import Reviewer
+    from researchos.core.models import Paper
+    from researchos.llm.client import get_llm
+    from researchos.persistence.store import Store
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    store = Store()
+    rows = store.list_papers(project, limit=500)
+    target = next((r for r in rows if r.id == paper_id), None)
+    if target is None:
+        console.print(f"[red]Paper {paper_id} not found in project {project}[/red]")
+        raise typer.Exit(1)
+    paper = Paper(
+        id=target.id,
+        source=target.source,
+        source_id=target.source_id,
+        title=target.title,
+        abstract=target.abstract,
+        url=target.url,
+    )
+    context = [
+        Paper(
+            id=r.id,
+            source=r.source,
+            source_id=r.source_id,
+            title=r.title,
+            abstract=r.abstract,
+            url=r.url,
+        )
+        for r in rows
+    ]
+    result = Reviewer(get_llm(settings)).review(paper, heuristic_card(paper), context)
+    panel = Panel(
+        f"[bold]{paper.title}[/bold]\n\n"
+        f"score: [bold]{result.score:.1f}/10[/bold] · "
+        f"novelty {result.novelty:.2f} · feasibility {result.feasibility:.2f} · "
+        f"[dim]{result.reviewed_by}[/dim]" + ("\n\n" + result.summary if result.summary else ""),
+        title="Paper review",
+        border_style="yellow",
+    )
+    console.print(panel)
+    if result.strengths:
+        console.print("\n[green]Strengths:[/green]")
+        for s in result.strengths:
+            console.print(f"  + {s}")
+    if result.weaknesses:
+        console.print("\n[red]Weaknesses:[/red]")
+        for w in result.weaknesses:
+            console.print(f"  - {w}")
 
 
 @app.command()

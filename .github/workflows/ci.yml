@@ -57,3 +57,6 @@ jobs:
 
       - name: Run frozen retrieval benchmarks (recall@k, grounding)
         run: uv run python -m benchmarks.run_eval
+
+      - name: Run reviewer benchmark (heuristic sanity, tier ordering)
+        run: uv run python -m benchmarks.run_reviewer_eval
