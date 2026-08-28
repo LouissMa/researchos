@@ -554,5 +554,64 @@ def experiment_list(
     console.print(table)
 
 
+writing_app = typer.Typer(help="LaTeX drafting & consistency checks (Phase 5).")
+app.add_typer(writing_app, name="write")
+
+
+@writing_app.command("draft")
+def write_draft(
+    project: str = typer.Option("default", help="Project id"),
+    run_id: str = typer.Option(None, help="Optional run id to attribute the draft"),
+) -> None:
+    """Generate a related-work LaTeX draft grounded in the project's knowledge graph."""
+    from researchos.agents.writing import WritingAgent
+    from researchos.llm.client import get_llm
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    draft = WritingAgent(get_llm(settings)).draft(project, run_id=run_id)
+
+    artifact_uri = settings.artifacts_dir / f"draft-{project}.tex"
+    artifact_uri.write_text(draft.tex, encoding="utf-8")
+    Store().add_artifact(project, run_id or "writing", "latex_draft", str(artifact_uri))
+
+    console.print(
+        Panel(
+            f"[bold]{len(draft.sections)} sections[/bold] · "
+            f"{len(draft.citations)} citations · [dim]{draft.generated_by}[/dim]",
+            title=f"LaTeX draft · {project}",
+            border_style="magenta",
+        )
+    )
+    console.print(f"[dim]saved: {artifact_uri}[/dim]")
+    if draft.inconsistencies:
+        console.print("\n[yellow]Consistency issues:[/yellow]")
+        for issue in draft.inconsistencies:
+            console.print(f"  - {issue}")
+    else:
+        console.print("\n[green]Consistency check passed — every citation resolves.[/green]")
+
+
+@writing_app.command("check")
+def write_check(
+    project: str = typer.Option("default", help="Project id"),
+) -> None:
+    """Verify that a draft's citations all resolve to bibliography entries."""
+    from researchos.agents.writing import WritingAgent
+    from researchos.llm.client import get_llm
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    draft = WritingAgent(get_llm(settings)).draft(project)
+    if draft.inconsistencies:
+        console.print(f"[red]{len(draft.inconsistencies)} consistency issue(s):[/red]")
+        for issue in draft.inconsistencies:
+            console.print(f"  - {issue}")
+        raise typer.Exit(1)
+    console.print("[green]All citations resolve — no dangling references.[/green]")
+
+
 if __name__ == "__main__":
     app()

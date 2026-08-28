@@ -9,7 +9,7 @@
 [![CI](https://github.com/LouissMa/researchos/actions/workflows/ci.yml/badge.svg)](https://github.com/LouissMa/researchos/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/status-alpha-orange.svg)](ROADMAP.md)
+[![Status](https://img.shields.io/badge/status-1.0.0-brightgreen.svg)](ROADMAP.md)
 
 </div>
 
@@ -35,7 +35,8 @@ It is built to support the *entire* research workflow — literature discovery, 
 
 ## Status
 
-🚧 **Alpha.** This repository currently ships a **runnable foundation**: a real end-to-end *literature discovery* run that works **offline with zero external services or API keys**.
+🎉 **1.0.0.** All five roadmap phases are shipped: a stateful multi-agent research
+environment that runs **fully offline with zero external services or API keys**.
 
 - ✅ Real multi-source search — **arXiv + OpenAlex** (Semantic Scholar opt-in), merged and **de-duplicated across sources**
 - ✅ Paper ingestion + chunking (+ optional PDF full text)
@@ -50,12 +51,15 @@ It is built to support the *entire* research workflow — literature discovery, 
 - ✅ **Reviewer capability** — per-paper strengths / weaknesses / novelty / score (`researchos review`), with a frozen offline benchmark in CI
 - ✅ **Graph analytics + visualization** — degree centrality (seminal candidates), community detection, and a dashboard Graph tab (SVG)
 - ✅ **Experiment workflow (assisted-first)** — reproduction plans from research cards, a sandboxed `python-exec` tool (command vetting + timeout + approval gate), and tracked runs with baseline-match verdicts
+- ✅ **Writing agent** — LaTeX related-work drafts grounded in the knowledge graph, with citation-consistency checks (`researchos write draft|check`)
 - ✅ **Frozen offline benchmarks** (`benchmarks/`) — recall@k + grounding per strategy on 4 scenarios + reviewer tier ordering, run in CI
 - ✅ Append-only **event log** (SQLite) — every run is replayable
 - ✅ Landscape report artifact + streaming reasoning trace
 - ✅ FastAPI service, a **no-build web dashboard**, and a CLI
 
-Everything heavy or paid (LLM, GROBID, server-mode Qdrant, Neo4j, BGE embeddings) is **optional and pluggable** behind an interface. See the [ROADMAP](ROADMAP.md) for what's next.
+Everything heavy or paid (LLM, GROBID, server-mode Qdrant, Neo4j, containers, BGE embeddings)
+is **optional and pluggable** behind an interface — the roadmap's five phases are complete;
+the [future extensions](ROADMAP.md) remain open directions.
 
 ## Quickstart
 
@@ -68,7 +72,10 @@ cd researchos
 # Install (default profile = fully offline)
 uv sync                     # or: pip install -e .
 
-# Run a literature-discovery workflow — no API key needed
+# Zero-dependency demo: the whole pipeline with a built-in offline source
+python examples/offline_discovery.py
+
+# Run a real literature-discovery workflow — no API key needed
 uv run researchos discover "long-term memory mechanisms for LLM agents" --limit 15
 ```
 

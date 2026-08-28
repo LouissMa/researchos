@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, Integer, PrimaryKeyConstraint, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from researchos.persistence.db import Base
@@ -40,9 +40,13 @@ class EventRow(Base):
 
 
 class PaperRow(Base):
-    __tablename__ = "paper"
+    """A paper **scoped to a project** — the same arXiv id in two projects is two rows,
+    so ``list_papers(project)`` always returns exactly that project's papers."""
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    __tablename__ = "paper"
+    __table_args__ = (PrimaryKeyConstraint("project_id", "id"),)
+
+    id: Mapped[str] = mapped_column(String(64))
     project_id: Mapped[str] = mapped_column(String(64), index=True)
     source: Mapped[str] = mapped_column(String(32))
     source_id: Mapped[str] = mapped_column(String(128))

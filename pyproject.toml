@@ -1,6 +1,6 @@
 [project]
 name = "researchos"
-version = "0.1.0"
+version = "1.0.0"
 description = "An Autonomous AI Research Operating System — a multi-agent collaborator for the full research workflow."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -8,7 +8,7 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "LouissMa" }]
 keywords = ["ai", "agents", "research", "llm", "rag", "knowledge-graph", "langgraph"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.12",

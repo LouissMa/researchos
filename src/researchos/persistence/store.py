@@ -49,7 +49,7 @@ class Store:
         n = 0
         with get_session() as s:
             for paper in state.papers.values():
-                if s.get(PaperRow, paper.id) is not None:
+                if s.get(PaperRow, (state.project_id, paper.id)) is not None:
                     continue
                 s.add(
                     PaperRow(

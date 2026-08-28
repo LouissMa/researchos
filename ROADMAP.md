@@ -74,12 +74,20 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned
 - ✅ Ships first as *assisted* reproduction (human runs, system records); autonomous
   execution stays gated behind explicit approval
 
-## Phase 5 — Writing & polish
-- ⬜ **Writing** agent: LaTeX drafts, related work from the KG, consistency checks
-- ⬜ Full `examples/`, tutorials, API docs
-- ⬜ 1.0 launch
+## Phase 5 — Writing & polish  *(complete)*
+- ✅ **Writing** agent: LaTeX related-work drafts assembled **from the knowledge graph**
+  (theme sections from concept nodes; every `\cite` resolves to a `\bibitem`; consistency
+  check flags dangling cites) — `researchos write draft|check`
+- ✅ Full `examples/` (offline + real-source runnable scripts), `CHANGELOG.md`
+- ✅ **1.0.0 launch** — production/stable classifier, version bump, README/architecture updates
 
 ---
+
+## Roadmap — complete 🎉
+
+All five phases shipped. Future extensions (see below) remain open research directions:
+multi-user collaboration, self-improving retrieval, the reproduction leaderboard, and
+local-first open-weight model support.
 
 ## Future extensions
 - VS Code / Zotero / Overleaf integrations

@@ -24,7 +24,7 @@ async def _lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(
         title="ResearchOS",
-        version="0.1.0",
+        version="1.0.0",
         description="An Autonomous AI Research Operating System.",
         lifespan=_lifespan,
     )
