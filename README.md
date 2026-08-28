@@ -49,6 +49,7 @@ It is built to support the *entire* research workflow — literature discovery, 
 - ✅ **Idea agent** — gap analysis over the landscape (cross-theme bridges, under-explored themes, recurring-interest alignment, isolated contributions) → grounded research proposals
 - ✅ **Reviewer capability** — per-paper strengths / weaknesses / novelty / score (`researchos review`), with a frozen offline benchmark in CI
 - ✅ **Graph analytics + visualization** — degree centrality (seminal candidates), community detection, and a dashboard Graph tab (SVG)
+- ✅ **Experiment workflow (assisted-first)** — reproduction plans from research cards, a sandboxed `python-exec` tool (command vetting + timeout + approval gate), and tracked runs with baseline-match verdicts
 - ✅ **Frozen offline benchmarks** (`benchmarks/`) — recall@k + grounding per strategy on 4 scenarios + reviewer tier ordering, run in CI
 - ✅ Append-only **event log** (SQLite) — every run is replayable
 - ✅ Landscape report artifact + streaming reasoning trace
@@ -97,6 +98,16 @@ Explore what's worth doing next and how strong each paper looks:
 ```bash
 uv run researchos ideas list                 # grounded research proposals (Idea agent)
 uv run researchos review <paper_id>          # strengths / weaknesses / novelty / score
+```
+
+Assisted paper reproduction (Phase 4) — every command runs in a vetted sandbox and
+requires your approval:
+
+```bash
+uv run researchos experiment plan <paper_id>           # plan from the research card
+uv run researchos experiment run <plan_id> --yes \     # run a command, record + compare
+    --command "python run_experiment.py"
+uv run researchos experiment list                      # tracked runs & baseline verdicts
 ```
 
 Compare retrieval strategies against the frozen benchmark suite (offline):

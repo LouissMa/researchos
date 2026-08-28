@@ -167,3 +167,19 @@ class PaperReview(BaseModel):
     feasibility: float = 0.0  # 0–1
     score: float = 0.0  # 0–10
     reviewed_by: str = "heuristic"  # "heuristic" | "llm:<model>"
+
+
+class ExperimentPlan(BaseModel):
+    """A reproduction plan for one paper (Phase 4, assisted-first).
+
+    ``commands`` are the exact sandboxed commands to run (human-approved before
+    execution); ``baseline`` is what the paper claims, for later comparison.
+    """
+
+    id: str
+    paper_id: str
+    title: str
+    steps: list[str] = Field(default_factory=list)  # reproduction narrative
+    commands: list[str] = Field(default_factory=list)  # exact commands
+    baseline: str = ""  # expected result from the paper
+    generated_by: str = "heuristic"  # "heuristic" | "llm:<model>"

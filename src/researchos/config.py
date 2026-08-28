@@ -64,6 +64,13 @@ class Settings(BaseSettings):
     # ---- Ingestion ----
     fetch_pdf: bool = False
 
+    # ---- Experiments (Phase 4, assisted-first) ----
+    # Timeout for a single sandboxed command.
+    experiment_timeout_s: int = 60
+    # Approval gate for python-exec: default OFF — execution requires explicit human
+    # approval (CLI --yes / typer.confirm). Never enable for unattended automation.
+    experiment_allow_exec: bool = False
+
     @property
     def source_list(self) -> list[str]:
         return [s.strip() for s in self.sources.split(",") if s.strip()]
@@ -81,9 +88,14 @@ class Settings(BaseSettings):
     def qdrant_path(self) -> Path:
         return self.data_dir / "qdrant"
 
+    @property
+    def experiment_dir(self) -> Path:
+        return self.data_dir / "experiments"
+
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        self.experiment_dir.mkdir(parents=True, exist_ok=True)
 
 
 @lru_cache(maxsize=1)

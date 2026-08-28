@@ -130,3 +130,25 @@ class IdeaRow(Base):
     feasibility: Mapped[float] = mapped_column(Float, default=0.0)
     generated_by: Mapped[str] = mapped_column(String(32), default="heuristic")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class ExperimentRow(Base):
+    """An experiment (reproduction) run for one paper — assisted-first tracking (Phase 4)."""
+
+    __tablename__ = "experiment"
+
+    id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), index=True)
+    paper_id: Mapped[str] = mapped_column(String(64), index=True)
+    title: Mapped[str] = mapped_column(Text, default="")
+    plan: Mapped[dict] = mapped_column(JSON, default=dict)
+    command: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(
+        String(32), default="planned"
+    )  # planned|running|ok|failed|skipped
+    output: Mapped[str] = mapped_column(Text, default="")
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    baseline: Mapped[str] = mapped_column(Text, default="")
+    baseline_matched: Mapped[bool | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

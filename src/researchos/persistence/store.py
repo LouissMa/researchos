@@ -8,7 +8,13 @@ from sqlalchemy import select
 
 from researchos.core.state import ResearchState
 from researchos.persistence.db import get_session
-from researchos.persistence.models import ArtifactRow, IdeaRow, PaperRow, RunRow
+from researchos.persistence.models import (
+    ArtifactRow,
+    ExperimentRow,
+    IdeaRow,
+    PaperRow,
+    RunRow,
+)
 
 
 class Store:
@@ -115,6 +121,27 @@ class Store:
                 select(IdeaRow)
                 .where(IdeaRow.project_id == project_id)
                 .order_by(IdeaRow.created_at.desc(), IdeaRow.novelty.desc())
+                .limit(limit)
+            )
+            return list(s.scalars(stmt).all())
+
+    # ---- experiments ----
+    def upsert_experiment(self, row: ExperimentRow) -> None:
+        """Insert or update one experiment row (idempotent by experiment id)."""
+        with get_session() as s:
+            s.merge(row)
+            s.commit()
+
+    def get_experiment(self, experiment_id: str) -> ExperimentRow | None:
+        with get_session() as s:
+            return s.get(ExperimentRow, experiment_id)
+
+    def list_experiments(self, project_id: str, limit: int = 100) -> list[ExperimentRow]:
+        with get_session() as s:
+            stmt = (
+                select(ExperimentRow)
+                .where(ExperimentRow.project_id == project_id)
+                .order_by(ExperimentRow.created_at.desc())
                 .limit(limit)
             )
             return list(s.scalars(stmt).all())

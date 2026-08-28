@@ -63,11 +63,16 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned
   connected components → communities) via `researchos graph analytics`; **Neo4j remains
   the v2 drop-in** per ADR-0003 once multi-hop analytics dominate
 
-## Phase 4 — Experiments (highest risk, deliberately last)
-- ⬜ **Experiment** agent: plan → code template → sandboxed run → analyze
-- ⬜ Sandboxed `python-exec` tool (network-restricted, resource-capped container)
-- ⬜ Experiment tracking + baseline comparison + reproduction workflow
-- ⬜ Ships first as *assisted* reproduction (human runs), then autonomous
+## Phase 4 — Experiments (highest risk, deliberately last)  *(complete, assisted-first)*
+- ✅ **Experiment** agent: plan → code template → sandboxed run → analyze (assisted-first:
+  the human approves/edits every command before it runs)
+- ✅ Sandboxed `python-exec` tool — command vetting (network/install/destructive blocklist),
+  timeout, working-dir isolation, secrets-stripped env, **explicit human approval gate**
+  (containers remain the hard-isolation upgrade)
+- ✅ Experiment tracking + baseline comparison + reproduction workflow (`experiment` table,
+  `researchos experiment plan|run|list`, baseline-match verdicts)
+- ✅ Ships first as *assisted* reproduction (human runs, system records); autonomous
+  execution stays gated behind explicit approval
 
 ## Phase 5 — Writing & polish
 - ⬜ **Writing** agent: LaTeX drafts, related work from the KG, consistency checks

@@ -370,5 +370,189 @@ def benchmark(
     raise typer.Exit(subprocess.call(cmd, cwd=str(script.parent.parent)))
 
 
+experiment_app = typer.Typer(
+    help="Experiment planning & assisted reproduction (Phase 4, human-in-the-loop)."
+)
+app.add_typer(experiment_app, name="experiment")
+
+
+@experiment_app.command("plan")
+def experiment_plan(
+    paper_id: str = typer.Argument(..., help="Paper id from a previous run"),
+    project: str = typer.Option("default", help="Project id"),
+) -> None:
+    """Generate a reproduction plan from the paper's research card."""
+    from researchos.agents.experiment import ExperimentAgent
+    from researchos.agents.knowledge import heuristic_card
+    from researchos.core.models import Paper
+    from researchos.llm.client import get_llm
+    from researchos.persistence.models import ExperimentRow
+    from researchos.persistence.store import Store
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    store = Store()
+    rows = store.list_papers(project, limit=500)
+    target = next((r for r in rows if r.id == paper_id), None)
+    if target is None:
+        console.print(f"[red]Paper {paper_id} not found in project {project}[/red]")
+        raise typer.Exit(1)
+    paper = Paper(
+        id=target.id,
+        source=target.source,
+        source_id=target.source_id,
+        title=target.title,
+        abstract=target.abstract,
+        url=target.url,
+    )
+    plan = ExperimentAgent(get_llm(settings)).plan(paper, heuristic_card(paper))
+    store.upsert_experiment(
+        ExperimentRow(
+            id=plan.id,
+            project_id=project,
+            paper_id=paper_id,
+            title=plan.title,
+            plan=plan.model_dump(),
+            status="planned",
+            baseline=plan.baseline,
+        )
+    )
+    console.print(
+        Panel(
+            f"[bold]{plan.title}[/bold] · [dim]{plan.generated_by}[/dim]",
+            title="Experiment plan",
+            border_style="cyan",
+        )
+    )
+    for i, step in enumerate(plan.steps, 1):
+        console.print(f"  {i}. {step}")
+    if plan.commands:
+        console.print("\n[bold]Commands (human-edit before running):[/bold]")
+        for c in plan.commands:
+            console.print(f"  [dim]$[/dim] {c}")
+    if plan.baseline:
+        console.print(f"\n[bold]Baseline claim:[/bold] {plan.baseline[:200]}")
+    console.print(
+        f"\n[dim]plan id: {plan.id} → run with: researchos experiment run {plan.id}[/dim]"
+    )
+
+
+@experiment_app.command("run")
+def experiment_run(
+    experiment_id: str = typer.Argument(..., help="Plan/experiment id"),
+    command: str = typer.Option(None, help="Command to run (default: plan's first command)"),
+    yes: bool = typer.Option(False, help="Approve execution (bypasses the confirmation prompt)"),
+    project: str = typer.Option("default", help="Project id"),
+) -> None:
+    """Run a planned command in the sandbox — approval required (--yes or prompt)."""
+    from researchos.agents.experiment import baseline_match
+    from researchos.core.models import ExperimentPlan
+    from researchos.persistence.models import ExperimentRow
+    from researchos.persistence.store import Store
+    from researchos.tools.python_exec import PythonExecTool
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    store = Store()
+    row = store.get_experiment(experiment_id)
+    if row is None:
+        console.print(f"[red]Unknown experiment {experiment_id} — plan it first.[/red]")
+        raise typer.Exit(1)
+    plan = ExperimentPlan(**row.plan)
+    cmd = command or (plan.commands[0] if plan.commands else None)
+    if not cmd:
+        console.print("[red]No command to run — provide --command or a plan with commands.[/red]")
+        raise typer.Exit(1)
+
+    approved = yes or settings.experiment_allow_exec
+    if not approved:
+        approved = typer.confirm(f"Run in sandbox: [bold]{cmd}[/bold]?")
+    if not approved:
+        console.print("[yellow]Aborted — command not run.[/yellow]")
+        raise typer.Exit(1)
+
+    workdir = settings.experiment_dir / project / experiment_id
+    tool = PythonExecTool(
+        workdir,
+        timeout_s=settings.experiment_timeout_s,
+        allow_exec=True,  # approval already granted by the caller
+    )
+    result = tool.invoke(command=cmd, approved=True)
+    data = result.data or {}
+    output = str(data.get("output", ""))
+    matched = baseline_match(plan.baseline, output)
+    status = "ok" if result.ok else "failed"
+    store.upsert_experiment(
+        ExperimentRow(
+            id=experiment_id,
+            project_id=project,
+            paper_id=row.paper_id,
+            title=row.title,
+            plan=row.plan,
+            command=cmd,
+            status=status,
+            output=output,
+            exit_code=data.get("exit_code"),
+            duration_ms=int(data.get("duration_ms", 0)),
+            baseline=plan.baseline,
+            baseline_matched=matched,
+        )
+    )
+
+    icon = "[green]ok[/green]" if result.ok else "[red]failed[/red]"
+    console.print(
+        f"\nexperiment {experiment_id} · {icon} · exit {data.get('exit_code')} · "
+        f"{data.get('duration_ms')}ms"
+    )
+    tail = "\n".join(output.splitlines()[-12:])
+    if tail:
+        console.print(Panel(tail, title="output (tail)", border_style="dim"))
+    if plan.baseline:
+        verdict = {
+            True: "[green]matches baseline claim[/green]",
+            False: "[yellow]does NOT match baseline — review[/yellow]",
+            None: "[dim]baseline not comparable (no claim)[/dim]",
+        }[matched]
+        console.print(f"baseline: {verdict}")
+        console.print(f"[dim]claimed:[/dim] {plan.baseline[:160]}")
+
+
+@experiment_app.command("list")
+def experiment_list(
+    project: str = typer.Option("default", help="Project id"),
+    limit: int = typer.Option(20, help="Max experiments to show"),
+) -> None:
+    """List tracked experiments (plans and runs)."""
+    from researchos.persistence.store import Store
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    rows = Store().list_experiments(project, limit=limit)
+    if not rows:
+        console.print(f"[red]No experiments for project {project}[/red]")
+        raise typer.Exit(1)
+    table = Table(title=f"Experiments · {project}")
+    table.add_column("id")
+    table.add_column("status")
+    table.add_column("exit")
+    table.add_column("ms")
+    table.add_column("baseline")
+    table.add_column("title")
+    for r in rows:
+        match = {True: "✓", False: "✗", None: "-"}.get(r.baseline_matched, "-")
+        table.add_row(
+            r.id[:12],
+            r.status,
+            str(r.exit_code if r.exit_code is not None else "-"),
+            str(r.duration_ms),
+            match,
+            r.title[:44],
+        )
+    console.print(table)
+
+
 if __name__ == "__main__":
     app()
