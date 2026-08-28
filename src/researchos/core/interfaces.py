@@ -12,7 +12,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
-from researchos.core.models import PaperChunk
+from researchos.core.models import GraphEdge, GraphNode, PaperChunk
 from researchos.core.state import AgentResult, ResearchState, Task
 
 
@@ -79,11 +79,44 @@ class VectorStore(Protocol):
 @runtime_checkable
 class MemoryStore(Protocol):
     """Facade over the tiered memory (ARCHITECTURE.md §4). The foundation implements
-    semantic (vector) retrieval; reflection/consolidation/decay arrive in Phase 2."""
+    semantic (vector) retrieval; reflection/consolidation/decay and the structural
+    (graph) tier arrive in Phase 2 behind the same interface."""
 
     def write_papers(self, state: ResearchState) -> int: ...
 
     def retrieve(self, query: str, k: int, project_id: str) -> list[tuple[str, float]]: ...
+
+
+# ------------------------------------------------------------ Retrieval strategies
+@runtime_checkable
+class RetrievalStrategy(Protocol):
+    """A swappable retrieval policy over the memory tiers (ADR-0002).
+
+    Returns ``(paper_id, score)`` best-first. Concrete variants — ``vector``
+    (embeddings), ``graph`` (structural traversal), ``hybrid`` (fusion) — live in
+    ``researchos.memory.retrieval`` and can be benchmarked against each other.
+    """
+
+    name: str
+
+    def retrieve(self, query: str, k: int, project_id: str) -> list[tuple[str, float]]: ...
+
+
+# -------------------------------------------------------------------- Graph store
+@runtime_checkable
+class GraphStore(Protocol):
+    """The structural memory tier: a knowledge graph of typed, provenance-carrying
+    edges (ADR-0003). SQLite/Postgres first; Neo4j is a drop-in implementation."""
+
+    def upsert_nodes(self, nodes: list[GraphNode], project_id: str) -> int: ...
+
+    def upsert_edges(self, edges: list[GraphEdge], project_id: str) -> int: ...
+
+    def clear(self, project_id: str) -> None: ...
+
+    def search(self, query: str, k: int, project_id: str) -> list[tuple[str, float]]: ...
+
+    def stats(self, project_id: str) -> dict: ...
 
 
 # -------------------------------------------------------------------------- Agents

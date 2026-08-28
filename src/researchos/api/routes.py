@@ -8,6 +8,8 @@ from fastapi.responses import HTMLResponse
 from researchos.api.dashboard import DASHBOARD_HTML
 from researchos.api.schemas import (
     EventItem,
+    GraphEdgeItem,
+    GraphResponse,
     KeyPaper,
     MemoryItem,
     PaperItem,
@@ -15,6 +17,7 @@ from researchos.api.schemas import (
     RunResponse,
     RunSummary,
 )
+from researchos.memory.graph import SqliteGraphStore
 from researchos.memory.manager import MemoryManager
 from researchos.orchestration.orchestrator import SequentialOrchestrator
 from researchos.persistence.event_log import EventLog
@@ -99,3 +102,27 @@ def list_memory(project_id: str, kind: str | None = None) -> list[MemoryItem]:
         )
         for m in MemoryManager().list_items(project_id, ref_type=kind)
     ]
+
+
+@router.get("/projects/{project_id}/graph", response_model=GraphResponse)
+def project_graph(project_id: str) -> GraphResponse:
+    """Knowledge-graph (structural memory) stats + a sample of provenance-carrying edges."""
+    store = SqliteGraphStore()
+    stats = store.stats(project_id)
+    sample_edges = [
+        GraphEdgeItem(
+            relation=e.relation,
+            source=e.source_id,
+            target=e.target_id,
+            confidence=e.confidence,
+            provenance=e.provenance,
+        )
+        for e in store.edges(project_id, limit=25)
+    ]
+    return GraphResponse(
+        project_id=project_id,
+        nodes=stats["nodes"],
+        edges=stats["edges"],
+        by_type=stats["by_type"],
+        sample_edges=sample_edges,
+    )

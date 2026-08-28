@@ -44,6 +44,9 @@ It is built to support the *entire* research workflow — literature discovery, 
 - ✅ **Planner → Literature → Knowledge → Critic** agents over a shared `ResearchState`
 - ✅ **Critic agent**: citation-coverage review ("are we missing seminal work?") + a bounded **reflection loop** that adds the gaps and re-ranks
 - ✅ **Tiered memory operations** — consolidation (themes → concepts), reflection (interest profile), forgetting (salience decay)
+- ✅ **Structural memory tier** — a knowledge graph (SQLite-backed, Neo4j-swappable) of papers/concepts with **provenance-carrying edges**; ungrounded edges are rejected at write time
+- ✅ **Swappable retrieval strategies** — `vector` (embeddings) · `graph` (structural traversal) · `hybrid` (RRF fusion), selected via `RESEARCHOS_RETRIEVAL_STRATEGY`
+- ✅ **Frozen offline benchmarks** (`benchmarks/`) — recall@k + grounding per strategy on 4 scenarios, run in CI
 - ✅ Append-only **event log** (SQLite) — every run is replayable
 - ✅ Landscape report artifact + streaming reasoning trace
 - ✅ FastAPI service, a **no-build web dashboard**, and a CLI
@@ -76,6 +79,21 @@ Inspect long-term memory (concepts consolidated, interest profile, salience):
 
 ```bash
 uv run researchos memory list
+```
+
+Inspect the knowledge graph — the structural memory tier:
+
+```bash
+uv run researchos graph stats     # nodes / edges by type
+uv run researchos graph edges     # provenance-carrying relations
+```
+
+Compare retrieval strategies against the frozen benchmark suite (offline):
+
+```bash
+uv run researchos benchmark                 # all strategies, all scenarios
+uv run researchos benchmark --strategy hybrid
+# or directly:  uv run python -m benchmarks.run_eval
 ```
 
 Or run it as a service with a **web dashboard** (project view + reasoning-trace timeline):
@@ -111,8 +129,13 @@ User goal
   → Critic Agent      → citation-coverage review + score
   → Reflection loop   → add missing seminal papers → re-rank (bounded, once)
   → Memory ops        → consolidate themes · reflect interests · decay salience
+  → Knowledge graph   → paper/concept nodes + grounded edges (structural tier)
   → Artifacts + replayable trace      ← every step emits events
 ```
+
+Ranking uses the configured **retrieval strategy** (default `hybrid` = vector + graph
+fused with reciprocal-rank fusion); the knowledge graph is rebuilt per run from the
+landscape in two deterministic phases, so rankings stay reproducible across runs.
 
 Runs are stateful and checkpointable; agents never mutate global state directly — they return **state deltas** that the runtime applies, so every change is diffable, auditable, and replayable from the event log.
 
@@ -125,12 +148,13 @@ src/researchos/
   agents/         base · literature · knowledge · critic  (Idea/Experiment/Writing next)
   tools/          MCP-style tools: arXiv · OpenAlex · Semantic Scholar · GitHub
   ingestion/      PDF (PyMuPDF, optional) · chunking · dedup · embedding providers
-  memory/         vector store (Qdrant) · SemanticMemory · MemoryManager (consolidate/reflect/decay)
+  memory/         vector store (Qdrant) · graph store + builder · retrieval strategies · MemoryManager
   llm/            LLM interface: null (heuristic) · OpenAI-compatible
-  persistence/    SQLAlchemy models · append-only event log
+  persistence/    SQLAlchemy models (incl. kg_node / kg_edge) · append-only event log
   observability/  event types + emitter (OpenTelemetry next)
   api/            FastAPI app · routes · schemas · no-build web dashboard
-  cli.py          typer CLI (discover · runs · memory · serve)
+  cli.py          typer CLI (discover · runs · memory · graph · benchmark · serve)
+benchmarks/       frozen corpus + scenarios + run_eval.py (recall@k, grounding)
 docs/adr/         architecture decision records
 examples/         runnable scripts
 tests/            unit + integration

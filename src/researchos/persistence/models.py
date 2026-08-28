@@ -81,3 +81,33 @@ class ArtifactRow(Base):
     kind: Mapped[str] = mapped_column(String(64))
     uri: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class KGNodeRow(Base):
+    """A node in the structural (knowledge-graph) memory tier (ADR-0003)."""
+
+    __tablename__ = "kg_node"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)  # project:type:ref_id
+    project_id: Mapped[str] = mapped_column(String(64), index=True)
+    node_type: Mapped[str] = mapped_column(String(32), index=True)
+    ref_id: Mapped[str] = mapped_column(String(96))
+    label: Mapped[str] = mapped_column(Text, default="")
+    properties: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class KGEdgeRow(Base):
+    """A typed relation carrying provenance + confidence — ungrounded edges are
+    rejected at write time (ARCHITECTURE.md §5 anti-hallucination rule)."""
+
+    __tablename__ = "kg_edge"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[str] = mapped_column(String(64), index=True)
+    relation: Mapped[str] = mapped_column(String(32), index=True)
+    source_id: Mapped[str] = mapped_column(String(128), index=True)
+    target_id: Mapped[str] = mapped_column(String(128))
+    provenance: Mapped[dict] = mapped_column(JSON, default=dict)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

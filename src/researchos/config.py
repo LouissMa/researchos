@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     qdrant_mode: str = "embedded"  # embedded | server
     qdrant_url: str = "http://localhost:6333"
 
+    # ---- Memory & retrieval ----
+    # Retrieval policy over the memory tiers: "vector" | "graph" | "hybrid" (RRF fusion).
+    # "graph"/"hybrid" fall back to "vector" when the structural tier is disabled.
+    retrieval_strategy: str = "hybrid"
+    # Build and use the structural (knowledge-graph) memory tier.
+    graph_enabled: bool = True
+
     # ---- Sources ----
     # Comma-separated list: any of arxiv, semantic_scholar, openalex.
     sources: str = "arxiv,openalex"

@@ -39,3 +39,16 @@ def get_session() -> Session:
     if _SessionFactory is None:
         raise RuntimeError("Database not initialized — call init_db() first.")
     return _SessionFactory()
+
+
+def close_db() -> None:
+    """Dispose the engine and release the database file (frees SQLite locks).
+
+    Call when the process is done with persistence, e.g. before cleaning up temp
+    data directories (benchmarks) or on graceful server shutdown.
+    """
+    global _engine, _SessionFactory
+    if _engine is not None:
+        _engine.dispose()
+        _engine = None
+        _SessionFactory = None

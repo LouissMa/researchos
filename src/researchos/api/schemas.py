@@ -56,3 +56,19 @@ class MemoryItem(BaseModel):
     content: str
     salience: float
     pinned: bool
+
+
+class GraphEdgeItem(BaseModel):
+    relation: str
+    source: str
+    target: str
+    confidence: float
+    provenance: dict
+
+
+class GraphResponse(BaseModel):
+    project_id: str
+    nodes: int
+    edges: int
+    by_type: dict[str, int]
+    sample_edges: list[GraphEdgeItem]

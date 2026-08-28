@@ -107,3 +107,32 @@ class Review(BaseModel):
     suggestions: list[str] = Field(default_factory=list)
     score: float = 0.0  # 0–10
     reviewed_by: str = "critic"
+
+
+class GraphNode(BaseModel):
+    """A node in the structural (knowledge-graph) memory tier (ADR-0003).
+
+    ``ref_id`` links back to the domain object (a ``Paper.id`` or a ``Cluster.id``);
+    ``node_type`` is the ontology label (``paper``, ``concept``, ``method``, ...).
+    """
+
+    id: str  # stable: "{project_id}:{node_type}:{ref_id}"
+    node_type: str
+    ref_id: str
+    label: str
+    properties: dict = Field(default_factory=dict)
+
+
+class GraphEdge(BaseModel):
+    """A typed, provenance-carrying relation between two graph nodes.
+
+    **Anti-hallucination rule (ARCHITECTURE.md §5):** every edge must carry provenance —
+    at least one of ``source_paper`` / ``span`` / ``tool`` — or the store rejects it at
+    write time. ``confidence`` ∈ [0, 1].
+    """
+
+    relation: str
+    source_id: str
+    target_id: str
+    provenance: dict = Field(default_factory=dict)
+    confidence: float = 1.0

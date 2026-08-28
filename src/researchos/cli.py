@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -28,8 +29,10 @@ app = typer.Typer(
 )
 runs_app = typer.Typer(help="Inspect past runs.")
 memory_app = typer.Typer(help="Inspect long-term memory.")
+graph_app = typer.Typer(help="Inspect the knowledge graph (structural memory tier).")
 app.add_typer(runs_app, name="runs")
 app.add_typer(memory_app, name="memory")
+app.add_typer(graph_app, name="graph")
 console = Console()
 
 _ICONS = {
@@ -42,6 +45,7 @@ _ICONS = {
     EventType.PAPERS_FOUND: "[cyan]found[/cyan]",
     EventType.PAPERS_INGESTED: "[cyan]index[/cyan]",
     EventType.MEMORY_WRITE: "[cyan]mem  [/cyan]",
+    EventType.GRAPH_WRITE: "[magenta]graph[/magenta]",
     EventType.ARTIFACT_SAVED: "[green]save [/green]",
     EventType.RUN_FINISHED: "[green]fin  [/green]",
     EventType.RUN_FAILED: "[red]fail [/red]",
@@ -179,6 +183,72 @@ def memory_reflect(project: str = typer.Option("default", help="Project id")) ->
     init_db(settings.db_path)
     profile = MemoryManager().reflect(project)
     console.print(f"[green]{profile}[/green]")
+
+
+@graph_app.command("stats")
+def graph_stats(project: str = typer.Option("default", help="Project id")) -> None:
+    """Show knowledge-graph node/edge counts for a project."""
+    from researchos.memory.graph import SqliteGraphStore
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    stats = SqliteGraphStore().stats(project)
+    console.print(
+        f"[green]Knowledge graph · {project}[/green]: "
+        f"{stats['nodes']} nodes · {stats['edges']} edges"
+    )
+    for node_type, count in sorted(stats["by_type"].items()):
+        console.print(f"  [dim]{node_type}:[/dim] {count}")
+
+
+@graph_app.command("edges")
+def graph_edges(
+    project: str = typer.Option("default", help="Project id"),
+    relation: str = typer.Option(None, help="Filter by relation, e.g. BELONGS_TO"),
+) -> None:
+    """List knowledge-graph edges with provenance + confidence."""
+    from researchos.memory.graph import SqliteGraphStore
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    init_db(settings.db_path)
+    edges = SqliteGraphStore().edges(project, relation=relation)
+    if not edges:
+        console.print(f"[red]No edges for project {project}[/red]")
+        raise typer.Exit(1)
+    table = Table(title=f"Graph edges · {project}")
+    table.add_column("relation")
+    table.add_column("source")
+    table.add_column("target")
+    table.add_column("confidence", justify="right")
+    table.add_column("provenance")
+    for e in edges[:50]:
+        prov = e.provenance.get("tool") or e.provenance.get("source_paper") or ""
+        table.add_row(e.relation, e.source_id, e.target_id, f"{e.confidence:.2f}", prov)
+    console.print(table)
+
+
+@app.command()
+def benchmark(
+    strategy: str = typer.Option(None, help="Limit to one strategy: vector | graph | hybrid"),
+) -> None:
+    """Run the frozen offline retrieval benchmarks (benchmarks/scenarios.json).
+
+    Evaluates recall@k and grounding for every retrieval strategy on each scenario.
+    """
+    import subprocess
+    import sys
+
+    script = Path(__file__).resolve().parent.parent.parent / "benchmarks" / "run_eval.py"
+    if not script.exists():
+        console.print(f"[red]Benchmarks not found: {script}[/red]")
+        raise typer.Exit(1)
+    cmd = [sys.executable, "-m", "benchmarks.run_eval"]
+    if strategy:
+        cmd.extend(["--strategy", strategy])
+    # -m needs the repository root (where the benchmarks package lives) on sys.path.
+    raise typer.Exit(subprocess.call(cmd, cwd=str(script.parent.parent)))
 
 
 if __name__ == "__main__":

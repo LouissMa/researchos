@@ -139,7 +139,7 @@ CONTRADICTS, INTRODUCES, ADDRESSES, DERIVED_FROM, PART_OF, SUPPORTS/REFUTES`.
 **Is Neo4j justified?** Not for the MVP. A few-thousand-node citation/method graph fits Postgres
 with an `edges` table + recursive CTEs. Neo4j earns its place when multi-hop queries dominate and
 graph algorithms (centrality for seminal papers, community detection for sub-fields) become core
-UX. The foundation ships graph-in-Postgres behind a `GraphStore` interface; Neo4j is a v2 drop-in.
+UX. The foundation ships graph-in-SQLite behind a `GraphStore` interface; Neo4j is a v2 drop-in.
 See [ADR-0003](docs/adr/0003-graph-postgres-then-neo4j.md).
 
 **Anti-hallucination:** every edge carries `provenance` (source paper + text span or asserting
@@ -157,8 +157,8 @@ edge, memory_item, run, event (APPEND-ONLY), tool_call, artifact`. The `event` t
 carries `payload{project_id, ref_id, source, section}` for filtered search and hard project
 isolation.
 
-Full schema sketch is in the design notes; the foundation implements `project, run, event, paper,
-artifact` in SQLite via SQLAlchemy.
+Full schema sketch is in the design notes; the foundation implements `project, run, event,
+paper, artifact, memory_item, kg_node, kg_edge` in SQLite via SQLAlchemy.
 
 ---
 
@@ -215,8 +215,10 @@ A serious research-infra project measures itself, from day one.
 | Memory | quality with consolidation/forgetting on/off | ablation |
 | End-to-end | task success on scripted scenarios | replayable suite |
 
-Because every run is an event log, **evals are replayable**. A `benchmarks/` suite of frozen
-research scenarios runs in CI and tracks metric regressions across model/strategy changes.
+Because every run is an event log, **evals are replayable**. `benchmarks/` ships a frozen
+suite (19-paper corpus, 4 topics) measuring **recall@k, grounding@k, and MRR** for every
+`RetrievalStrategy` (vector / graph / hybrid); it runs in CI with per-scenario thresholds
+so retrieval regressions across model/strategy changes fail the build.
 
 ---
 

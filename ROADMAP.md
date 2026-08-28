@@ -36,15 +36,20 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned
 - ✅ Citation-coverage check ("did we miss seminal work?") — in the Critic
 - ✅ Web dashboard: project view + reasoning-trace timeline (no-build; React SPA still planned)
 
-## Phase 2 — Memory & Critic  *(in progress)*
+## Phase 2 — Memory & Critic  *(complete)*
 > *Deliverable: the memory system becomes real infrastructure, and quality is gated.*
 
 - ✅ **Critic** agent (coverage / balance / score) + **bounded reflection loop**
 - ✅ Tiered memory operations: **consolidation** (themes → concepts), **reflection**
   (interest profile), **forgetting** (salience decay) on the `memory_item` store
-- ⬜ Structural (knowledge-graph) memory tier + hybrid retrieval
-- ⬜ `RetrievalStrategy` variants (vector vs hybrid vs graph) — swappable & benchmarked
-- ⬜ `benchmarks/` frozen scenarios + eval CI (recall@k, grounding)
+- ✅ Structural (knowledge-graph) memory tier — graph-in-SQLite behind a `GraphStore`
+  interface (ADR-0003): paper/concept nodes + provenance-carrying edges (ungrounded
+  edges rejected at write time); built per run in two deterministic phases so hybrid
+  rankings stay reproducible
+- ✅ `RetrievalStrategy` variants — **vector** vs **graph** vs **hybrid** (RRF fusion),
+  swappable via `RESEARCHOS_RETRIEVAL_STRATEGY` and benchmarked head-to-head
+- ✅ `benchmarks/` frozen scenarios (19-paper corpus, 4 topics) + eval CI:
+  recall@5, grounding@5, MRR per strategy, per-scenario thresholds
 
 ## Phase 3 — Ideas & Review
 - ⬜ **Idea** agent: gap analysis over the knowledge graph → research proposals

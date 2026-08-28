@@ -20,7 +20,9 @@ from researchos.ingestion.embedding import get_embedding_provider
 from researchos.ingestion.pdf import fetch_pdf_text
 from researchos.llm.client import get_llm
 from researchos.logging import get_logger
+from researchos.memory.graph import GraphMemory, SqliteGraphStore
 from researchos.memory.manager import MemoryManager
+from researchos.memory.retrieval import get_retrieval_strategy
 from researchos.memory.store import SemanticMemory
 from researchos.memory.vector_store import QdrantVectorStore
 from researchos.observability.events import Event, EventEmitter, EventType
@@ -52,6 +54,15 @@ class SequentialOrchestrator:
             url=self.settings.qdrant_url,
         )
         self.memory = SemanticMemory(self.embedder, self.vector_store)
+        # Structural (knowledge-graph) memory tier + the configured retrieval policy.
+        # Hybrid/graph fall back to vector automatically when the tier is disabled.
+        self.graph_store = SqliteGraphStore()
+        self.graph_memory = GraphMemory(self.graph_store)
+        self.memory.strategy = get_retrieval_strategy(
+            self.settings.retrieval_strategy,
+            vector_fn=self.memory.vector_retrieve,
+            graph=self.graph_store if self.settings.graph_enabled else None,
+        )
         self.llm = get_llm(self.settings)
 
         self.tools = ToolRegistry()
@@ -145,6 +156,11 @@ class SequentialOrchestrator:
                     {"task": task.kind.value, "ok": True, "output": result.output},
                 )
 
+                # Structural tier phase 1: paper skeleton before ranking, so hybrid
+                # retrieval sees a corpus-deterministic graph (reproducible rankings).
+                if task.kind == TaskKind.INGEST and self.settings.graph_enabled:
+                    self.graph_memory.write_skeleton(state)
+
                 # Optional PDF enrichment right after search (best-effort, off by default).
                 if task.kind == TaskKind.SEARCH and self.settings.fetch_pdf:
                     self._enrich_pdfs(state, emitter)
@@ -166,6 +182,22 @@ class SequentialOrchestrator:
                 EventType.MEMORY_WRITE,
                 {"concepts_consolidated": concepts, "interest_profile": profile},
             )
+
+            # Structural tier phase 2: rebuild the skeleton (covers reflected papers),
+            # then merge concepts + cluster-grounded edges into the knowledge graph.
+            if self.settings.graph_enabled and state.papers:
+                self.graph_memory.write_skeleton(state)
+                written = self.graph_memory.write_landscape(state)
+                gstats = self.graph_store.stats(project_id)
+                emitter.emit(
+                    "system",
+                    EventType.GRAPH_WRITE,
+                    {
+                        "written_edges": written["written_edges"],
+                        "total_nodes": gstats["nodes"],
+                        "total_edges": gstats["edges"],
+                    },
+                )
 
             artifact_uri = self._write_report(state)
             emitter.emit(

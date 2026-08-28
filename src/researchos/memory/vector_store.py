@@ -7,6 +7,7 @@ filtered search.
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from pathlib import Path
 
@@ -98,3 +99,8 @@ class QdrantVectorStore:
             )
             results.append((chunk, float(hit.score)))
         return results
+
+    def close(self) -> None:
+        """Release the embedded client (frees its on-disk storage lock)."""
+        with contextlib.suppress(Exception):
+            self.client.close()

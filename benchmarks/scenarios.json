@@ -1,0 +1,51 @@
+{
+  "scenarios": [
+    {
+      "id": "llm-agent-memory",
+      "query": "long-term memory mechanisms for llm agents",
+      "gold": [
+        "Long-Term Memory Architectures for LLM Agents",
+        "Episodic Memory and Reflection in Autonomous Agents",
+        "Memory-Augmented Language Models for Continual Tasks",
+        "Salience-Based Forgetting in Agent Memory Systems",
+        "Semantic Memory Consolidation for Conversational Agents",
+        "Working Memory Management for Multi-Turn LLM Assistants"
+      ],
+      "recall_at_5_threshold": 0.6
+    },
+    {
+      "id": "retrieval-augmented-generation",
+      "query": "retrieval augmented generation for knowledge intensive tasks",
+      "gold": [
+        "Retrieval-Augmented Generation: A Survey",
+        "Dense Passage Retrieval for Open-Domain Question Answering",
+        "Fusion-in-Decoder for Generative QA over Retrieved Passages",
+        "Self-RAG: Learning to Retrieve, Generate, and Critique",
+        "Adaptive Retrieval in Long-Context Language Models"
+      ],
+      "recall_at_5_threshold": 0.6
+    },
+    {
+      "id": "knowledge-graph-reasoning",
+      "query": "knowledge graphs for multi-hop reasoning in language models",
+      "gold": [
+        "Knowledge Graphs for Multi-Hop Reasoning in LLMs",
+        "GraphRAG: Combining Knowledge Graphs with Retrieval-Augmented Generation",
+        "Querying Knowledge Graphs with Natural Language",
+        "Neural Graph Databases for Reasoning over Learned Graphs",
+        "Constructing Domain Knowledge Graphs from Scientific Literature"
+      ],
+      "recall_at_5_threshold": 0.6
+    },
+    {
+      "id": "vector-database-semantic-search",
+      "query": "vector database semantic search",
+      "gold": [
+        "Benchmarking Vector Databases for Semantic Search",
+        "Approximate Nearest Neighbor Search in Vector Databases",
+        "Hybrid Vector Search with Metadata Filtering"
+      ],
+      "recall_at_5_threshold": 0.6
+    }
+  ]
+}
