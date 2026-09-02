@@ -46,7 +46,7 @@ class ArxivTool(BaseTool):
         query: str = kwargs["query"]
         limit: int = int(kwargs.get("limit", 20))
         sort_by: str = kwargs.get("sort_by", "relevance")
-        params = {
+        params: dict[str, str | int] = {
             "search_query": f"all:{query}",
             "start": 0,
             "max_results": limit,
